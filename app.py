@@ -12,7 +12,7 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
         
         # Set default config values
         config.setdefault("ollama_host", "http://ollama:11434")
-        config.setdefault("model", "llama3")
+        config.setdefault("model", "llama3.2")
         config.setdefault("path", "./chroma_db")
         
         # Initialize parent classes
@@ -23,7 +23,7 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
 # Create Vanna instance
 config = {
     "ollama_host": "http://ollama:11434",
-    "model": "llama3",
+    "model": "llama3.2",
     "path": "./chroma_db"
 }
 
