@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_storage:/root/.ollama
+    restart: unless-stopped
+
+  vanna-app:
+    build: .
+    container_name: vanna-app
+    ports:
+      - "8084:8084"
+    volumes:
+      - ./chroma_db:/app/chroma_db
+    depends_on:
+      - ollama
+    restart: unless-stopped
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+
+volumes:
+  ollama_storage:
+    driver: local
