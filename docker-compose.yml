@@ -10,6 +10,18 @@ services:
       - ollama_storage:/root/.ollama
     restart: unless-stopped
 
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=myuser
+      - POSTGRES_PASSWORD=mypassword
+      - POSTGRES_DB=vanna_test_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
   vanna-app:
     build: .
     container_name: vanna-app
@@ -19,6 +31,7 @@ services:
       - ./chroma_db:/app/chroma_db
     depends_on:
       - ollama
+      - postgres
     restart: unless-stopped
     environment:
       - OLLAMA_HOST=http://ollama:11434
@@ -26,3 +39,4 @@ services:
 volumes:
   ollama_storage:
     driver: local
+  postgres_data:
