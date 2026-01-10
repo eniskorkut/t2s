@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   ollama:
     image: ollama/ollama:latest
@@ -17,6 +15,7 @@ services:
       - "8084:8084"
     volumes:
       - ./chroma_db:/app/chroma_db
+      - ./db_data:/app/db_data
     depends_on:
       - ollama
     restart: unless-stopped

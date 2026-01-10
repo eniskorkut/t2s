@@ -1,4 +1,7 @@
 vanna
 flask
+flasgger
+flask-sock
 requests
 chromadb
+ollama

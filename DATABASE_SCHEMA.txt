@@ -1,0 +1,264 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    VERİTABANI ŞEMASI VE İLİŞKİLERİ                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           employees (Ana Tablo)                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ PRIMARY KEY: id                                                              │
+│                                                                              │
+│ Kolonlar:                                                                    │
+│   • id              INTEGER PRIMARY KEY                                     │
+│   • name            VARCHAR(100)                                            │
+│   • department      VARCHAR(50)                                             │
+│   • salary          DECIMAL(10, 2)                                          │
+│   • hire_date       DATE                                                    │
+│                                                                              │
+│ Örnek Veriler:                                                               │
+│   - 6 çalışan kaydı                                                          │
+│   - Departmanlar: Engineering (4), Sales (1), Marketing (1)                 │
+└────────────────────┬────────────────────────────────────────────────────────┘
+                      │
+                      │ 1:1 (One-to-One)
+                      │ Her işçinin bir kişisel bilgi kaydı
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    employee_personal_info (İlişkili)                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ PRIMARY KEY: id                                                              │
+│ FOREIGN KEY: employee_id → employees(id) ON DELETE CASCADE                   │
+│                                                                              │
+│ Kolonlar:                                                                    │
+│   • id              INTEGER PRIMARY KEY                                     │
+│   • employee_id     INTEGER NOT NULL ────┐                                  │
+│   • email           VARCHAR(100)         │                                  │
+│   • phone           VARCHAR(20)          │                                  │
+│   • address         VARCHAR(200)        │                                  │
+│   • birth_date      DATE                │                                  │
+│                                         │                                  │
+│ İlişki:                                    │                                  │
+│   employee_id → employees.id ─────────────┘                                  │
+│                                                                              │
+│ Örnek Veriler:                                                               │
+│   - 6 kişisel bilgi kaydı (her işçi için bir tane)                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           projects (İlişkisiz)                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ PRIMARY KEY: id                                                              │
+│                                                                              │
+│ Kolonlar:                                                                    │
+│   • id              INTEGER PRIMARY KEY                                     │
+│   • name            VARCHAR(100)                                            │
+│   • description     TEXT                                                    │
+│   • start_date      DATE                                                    │
+│   • end_date        DATE                                                    │
+│   • budget          DECIMAL(12, 2)                                          │
+│                                                                              │
+│ Özellik:                                                                     │
+│   - employees tablosu ile doğrudan ilişkisi YOK                             │
+│   - employee_projects ara tablosu ile ilişkilendirilir                      │
+│                                                                              │
+│ Örnek Veriler:                                                               │
+│   - 4 proje kaydı                                                            │
+│   - Website Redesign, Mobile App Development, Database Migration,            │
+│     Marketing Campaign                                                       │
+└────────────────────┬────────────────────────────────────────────────────────┘
+                      │
+                      │ Many-to-Many (M:N)
+                      │ Bir işçi birden fazla projede çalışabilir
+                      │ Bir projede birden fazla işçi çalışabilir
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      employee_projects (Ara Tablo)                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ PRIMARY KEY: id                                                              │
+│ FOREIGN KEY: employee_id → employees(id) ON DELETE CASCADE                  │
+│ FOREIGN KEY: project_id → projects(id) ON DELETE CASCADE                     │
+│ UNIQUE CONSTRAINT: (employee_id, project_id)                                 │
+│                                                                              │
+│ Kolonlar:                                                                    │
+│   • id              INTEGER PRIMARY KEY                                     │
+│   • employee_id     INTEGER NOT NULL ────┐                                  │
+│   • project_id      INTEGER NOT NULL ────┼──┐                               │
+│   • role            VARCHAR(50)         │  │                               │
+│   • hours_worked    INTEGER             │  │                               │
+│                                         │  │                               │
+│ İlişkiler:                                  │  │                               │
+│   employee_id → employees.id ─────────────┘  │                               │
+│   project_id → projects.id ───────────────────┘                               │
+│                                                                              │
+│ Özellik:                                                                     │
+│   - Aynı işçi aynı projede sadece bir kez olabilir (UNIQUE constraint)      │
+│                                                                              │
+│ Örnek Veriler:                                                               │
+│   - 10 işçi-proje ataması                                                    │
+│   - Roller: Frontend Developer, Backend Developer, Mobile Developer,        │
+│     Project Manager, UI/UX Designer, Database Architect, Tech Lead,         │
+│     Marketing Specialist, Sales Coordinator                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          İLİŞKİ DİYAGRAMI                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+                    ┌─────────────────┐
+                    │   employees     │
+                    │   (Ana Tablo)   │
+                    └────────┬────────┘
+                             │
+                             │ 1:1
+                             │
+                    ┌────────▼─────────────────┐
+                    │ employee_personal_info   │
+                    │   (Kişisel Bilgiler)     │
+                    └──────────────────────────┘
+
+                    ┌─────────────────┐
+                    │    projects      │
+                    │  (İlişkisiz)     │
+                    └────────┬────────┘
+                             │
+                             │ M:N
+                             │
+                    ┌────────▼─────────────────┐
+                    │  employee_projects       │
+                    │    (Ara Tablo)          │
+                    └────────┬────────────────┘
+                             │
+                             │ M:N
+                             │
+                    ┌────────▼────────┐
+                    │   employees     │
+                    │   (Ana Tablo)  │
+                    └─────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          İLİŞKİ TÜRLERİ                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. ONE-TO-ONE (1:1)
+   ┌─────────────┐         ┌──────────────────────┐
+   │  employees  │◄───────►│employee_personal_info│
+   └─────────────┘   1:1   └──────────────────────┘
+   Her işçinin bir kişisel bilgi kaydı var
+
+2. MANY-TO-MANY (M:N)
+   ┌─────────────┐         ┌──────────────────┐         ┌─────────────┐
+   │  employees  │◄───────►│employee_projects │◄───────►│  projects   │
+   └─────────────┘   M:N   └──────────────────┘   M:N   └─────────────┘
+   Bir işçi birden fazla projede çalışabilir
+   Bir projede birden fazla işçi çalışabilir
+
+3. İLİŞKİSİZ (Standalone)
+   ┌─────────────┐
+   │  projects   │  (Başlangıçta employees ile ilişkili değil)
+   └─────────────┘  (employee_projects ara tablosu ile ilişkilendirilir)
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          ÖRNEK VERİLER                                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+EMPLOYEES (6 kayıt):
+┌────┬──────────────────┬──────────────┬──────────┬────────────┐
+│ id │ name             │ department   │ salary   │ hire_date  │
+├────┼──────────────────┼──────────────┼──────────┼────────────┤
+│ 1  │ John Doe         │ Engineering  │ 75000.00 │ 2022-01-15 │
+│ 2  │ Jane Smith       │ Engineering  │ 85000.00 │ 2021-06-20 │
+│ 3  │ Bob Johnson      │ Sales        │ 60000.00 │ 2023-03-10 │
+│ 4  │ Alice Williams   │ Engineering  │ 90000.00 │ 2020-11-05 │
+│ 5  │ Charlie Brown    │ Marketing    │ 65000.00 │ 2022-09-12 │
+│ 6  │ Diana Prince     │ Engineering  │ 80000.00 │ 2021-04-18 │
+└────┴──────────────────┴──────────────┴──────────┴────────────┘
+
+EMPLOYEE_PERSONAL_INFO (6 kayıt):
+┌────┬─────────────┬──────────────────────────┬──────────────┬─────────────────┐
+│ id │ employee_id │ email                    │ phone        │ address         │
+├────┼─────────────┼──────────────────────────┼──────────────┼─────────────────┤
+│ 1  │ 1           │ john.doe@company.com     │ +1-555-0101 │ 123 Main St...  │
+│ 2  │ 2           │ jane.smith@company.com    │ +1-555-0102 │ 456 Oak Ave...  │
+│ 3  │ 3           │ bob.johnson@company.com │ +1-555-0103 │ 789 Pine Rd...  │
+│ 4  │ 4           │ alice.williams@company...│ +1-555-0104 │ 321 Elm St...   │
+│ 5  │ 5           │ charlie.brown@company.com │ +1-555-0105 │ 654 Maple Dr... │
+│ 6  │ 6           │ diana.prince@company.com │ +1-555-0106 │ 987 Cedar Ln... │
+└────┴─────────────┴──────────────────────────┴──────────────┴─────────────────┘
+
+PROJECTS (4 kayıt):
+┌────┬──────────────────────────┬──────────────────────────────┬──────────────┐
+│ id │ name                     │ description                 │ budget       │
+├────┼──────────────────────────┼──────────────────────────────┼──────────────┤
+│ 1  │ Website Redesign         │ Complete redesign...         │ 50000.00     │
+│ 2  │ Mobile App Development   │ New mobile app for iOS...   │ 120000.00    │
+│ 3  │ Database Migration       │ Migrate legacy database...  │ 75000.00     │
+│ 4  │ Marketing Campaign       │ Q4 marketing campaign...   │ 30000.00     │
+└────┴──────────────────────────┴──────────────────────────────┴──────────────┘
+
+EMPLOYEE_PROJECTS (10 kayıt):
+┌────┬─────────────┬─────────────┬──────────────────────┬──────────────┐
+│ id │ employee_id │ project_id  │ role                 │ hours_worked │
+├────┼─────────────┼─────────────┼──────────────────────┼──────────────┤
+│ 1  │ 1           │ 1           │ Frontend Developer   │ 320          │
+│ 2  │ 2           │ 1           │ Backend Developer    │ 400          │
+│ 3  │ 4           │ 1           │ Project Manager      │ 200          │
+│ 4  │ 1           │ 2           │ Mobile Developer     │ 450          │
+│ 5  │ 2           │ 2           │ Mobile Developer     │ 500          │
+│ 6  │ 6           │ 2           │ UI/UX Designer       │ 380          │
+│ 7  │ 2           │ 3           │ Database Architect   │ 300          │
+│ 8  │ 4           │ 3           │ Tech Lead            │ 250          │
+│ 9  │ 5           │ 4           │ Marketing Specialist │ 180          │
+│ 10 │ 3           │ 4           │ Sales Coordinator    │ 150          │
+└────┴─────────────┴─────────────┴──────────────────────┴──────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          ÖRNEK SQL SORGULARI                                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. Basit Sorgu (Tek Tablo):
+   SELECT name, department, salary 
+   FROM employees 
+   WHERE department = 'Engineering' 
+   ORDER BY salary DESC;
+
+2. JOIN Sorgusu (İki Tablo):
+   SELECT e.name, e.department, epi.email, epi.phone 
+   FROM employees e 
+   JOIN employee_personal_info epi ON e.id = epi.employee_id 
+   WHERE e.department = 'Engineering';
+
+3. Çoklu JOIN Sorgusu (Üç Tablo):
+   SELECT e.name, p.name as project_name, ep.role, ep.hours_worked
+   FROM employees e
+   JOIN employee_projects ep ON e.id = ep.employee_id
+   JOIN projects p ON ep.project_id = p.id
+   ORDER BY e.name;
+
+4. İlişkisiz Tablo Sorgusu:
+   SELECT name, description, start_date, end_date 
+   FROM projects 
+   ORDER BY start_date DESC;
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          VERİTABANI BİLGİLERİ                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Veritabanı Türü: SQLite
+Dosya Yolu: /app/db_data/employees.db (Container içinde)
+            ./db_data/employees.db (Host'ta)
+
+Toplam Tablo Sayısı: 4
+  - employees (Ana tablo)
+  - employee_personal_info (İlişkili - One-to-One)
+  - projects (İlişkisiz)
+  - employee_projects (Ara tablo - Many-to-Many)
+
+Toplam Kayıt Sayısı: 26
+  - employees: 6 kayıt
+  - employee_personal_info: 6 kayıt
+  - projects: 4 kayıt
+  - employee_projects: 10 kayıt
+
+Oluşturulma Tarihi: 2026-01-10
+Son Güncelleme: İlk oluşturma
