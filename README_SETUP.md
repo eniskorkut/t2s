@@ -2,17 +2,31 @@
 
 ## 🚀 Projeyi Çalıştırma
 
-### 1. Projeyi Başlatma
+### 1. Veritabanını ve Vanna AI'yı İlk Kez Başlatma
+
+**ÖNEMLİ:** İlk çalıştırmada veritabanını oluşturmak ve Vanna AI'yı eğitmek için `init_db.py` scriptini çalıştırmanız gerekiyor.
 
 ```bash
 # Proje klasörüne gidin
 cd /Users/eniskorkut/Desktop/vanna-main
 
-# Docker Compose ile servisleri başlatın
-docker-compose up --build
+# Docker Compose ile servisleri başlatın (sadece Ollama ve Vanna-app container'ları)
+docker-compose up -d
+
+# Veritabanını oluştur ve Vanna AI'yı eğit
+docker exec vanna-app python init_db.py
 ```
 
-**Not:** İlk çalıştırmada Ollama `llama3.2` modelini indirecek, bu birkaç dakika sürebilir.
+**Not:** İlk çalıştırmada Ollama `qwen2.5-coder:7b` modelini indirecek, bu birkaç dakika sürebilir.
+
+### 2. Normal Kullanım (Veritabanı Zaten Oluşturulmuşsa)
+
+```bash
+# Servisleri başlatın
+docker-compose up -d
+
+# Vanna-app container'ı otomatik olarak başlayacak ve mevcut veritabanına bağlanacak
+```
 
 ### 2. Servislerin Hazır Olduğunu Kontrol Etme
 
@@ -43,6 +57,16 @@ Proje şu anda **SQLite** veritabanı kullanıyor. `employees.db` adında bir ve
 Veritabanında 6 örnek çalışan kaydı bulunuyor:
 - Engineering departmanında 4 çalışan
 - Sales ve Marketing departmanlarında 1'er çalışan
+
+### Proje Yapısı
+
+Proje production-ready hale getirilmiştir ve şu dosyalardan oluşur:
+
+- **`vanna_config.py`**: MyVanna sınıfı ve konfigürasyon ayarları
+- **`init_db.py`**: Veritabanı oluşturma ve Vanna AI eğitimi scripti (ilk çalıştırmada kullanılır)
+- **`app.py`**: Flask web uygulaması (sadece mevcut veritabanına bağlanır ve uygulamayı başlatır)
+- **`docker-compose.yml`**: Docker servisleri yapılandırması
+- **`Dockerfile`**: Vanna-app container imajı
 
 ### Başka Veritabanı Kullanmak İsterseniz
 
