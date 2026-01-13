@@ -11,6 +11,49 @@ from vanna_config import MyVanna, get_default_config
 def get_ddl_statements():
     """Returns all DDL statements for table creation."""
     return {
+        "users": """
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+""",
+        "user_saved_queries": """
+CREATE TABLE user_saved_queries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    question TEXT NOT NULL,
+    sql_query TEXT NOT NULL,
+    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_trained BOOLEAN DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+""",
+        "chat_sessions": """
+CREATE TABLE chat_sessions (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    is_pinned BOOLEAN DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+""",
+        "chat_messages": """
+CREATE TABLE chat_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    role VARCHAR(20) NOT NULL,
+    content TEXT NOT NULL,
+    sql_query TEXT,
+    data TEXT,
+    plotly_json TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+);
+""",
         "employees": """
 CREATE TABLE employees (
     id INTEGER PRIMARY KEY,
@@ -189,6 +232,12 @@ def create_database(db_path):
     
     # Create all tables
     print("📋 Creating tables...")
+    # User management tables
+    cursor.execute(ddls["users"])
+    cursor.execute(ddls["user_saved_queries"])
+    cursor.execute(ddls["chat_sessions"])
+    cursor.execute(ddls["chat_messages"])
+    # Business data tables
     cursor.execute(ddls["employees"])
     cursor.execute(ddls["employee_personal_info"])
     cursor.execute(ddls["projects"])
