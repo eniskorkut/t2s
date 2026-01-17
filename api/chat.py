@@ -232,7 +232,7 @@ async def send_message(
             
             # Step 0: Semantic cache check (fast path)
             try:
-                cached_sql = QueryService.check_semantic_cache(vn, question, threshold=0.3)
+                cached_sql = QueryService.check_semantic_cache(vn, question)
                 if cached_sql:
                     full_sql = cached_sql.strip()
                     sql_explanation = QueryService.generate_sql_explanation(question, full_sql)

@@ -38,8 +38,9 @@ async def save_query(
     # Always train Vanna with the saved query to feed semantic cache
     try:
         vn.train(question=query_data.question, sql=query_data.sql_query)
+        print(f"✅ [Training] Successfully trained Vanna with query: \"{query_data.question[:50]}...\"")
     except Exception as e:
-        print(f"Warning: Failed to train Vanna: {e}")
+        print(f"⚠️  [Training] Failed to train Vanna: {e}")
     
     return {"success": True, "query_id": query_id}
 

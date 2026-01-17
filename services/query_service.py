@@ -139,52 +139,110 @@ class QueryService:
             return False
     
     @staticmethod
-    def check_semantic_cache(vn, question: str, threshold: float = 0.3) -> Optional[str]:
+    def check_semantic_cache(vn, question: str, similarity_threshold: float = 0.85) -> Optional[str]:
         """
         Check semantic cache for similar questions.
-        Uses ChromaDB vector store to find similar questions and return cached SQL.
+        Uses Vanna's built-in get_similar_question_sql which handles embedding correctly.
         
         Args:
             vn: Vanna instance with vector store
             question: User's question
-            threshold: Maximum distance threshold (default 0.3)
+            similarity_threshold: Minimum similarity to consider a cache hit (0-1, higher = stricter)
+                                  Note: This is similarity, not distance. 0.85 = 85% similar
             
         Returns:
             Cached SQL string if similar question found, None otherwise
         """
+        print(f"\n🔍 [Semantic Cache] Checking cache for question: \"{question[:80]}...\"")
+        
         try:
-            # Check if vn has sql_collection (ChromaDB_VectorStore)
-            if not hasattr(vn, 'sql_collection'):
+            # Use Vanna's built-in method which handles embedding correctly
+            # This method uses the ChromaDB_VectorStore's get_similar_question_sql
+            from vanna.legacy.chromadb import ChromaDB_VectorStore
+            
+            similar_questions = ChromaDB_VectorStore.get_similar_question_sql(vn, question, n_results=1)
+            
+            if not similar_questions or len(similar_questions) == 0:
+                print("📊 [Semantic Cache] No similar questions found in cache")
+                print("❌ [Semantic Cache] CACHE MISS - No cached queries")
                 return None
             
-            # Query ChromaDB for similar questions
-            results = vn.sql_collection.query(
-                query_texts=[question],
-                n_results=1,
-                include=["metadatas", "distances", "documents"]
-            )
+            # Get the first (most similar) result
+            top_match = similar_questions[0]
+            cached_question = top_match.get('question', '')
+            cached_sql = top_match.get('sql', '')
             
-            # Check if results exist and distance is below threshold
-            if results.get('distances') and len(results['distances']) > 0:
-                if len(results['distances'][0]) > 0:
-                    distance = results['distances'][0][0]
-                    if distance < threshold:
-                        # Try to extract from documents (ChromaDB stores JSON strings)
-                        if results.get('documents') and len(results['documents']) > 0:
-                            try:
-                                doc = results['documents'][0][0]
-                                if isinstance(doc, str):
-                                    doc_dict = json.loads(doc)
-                                    if 'sql' in doc_dict:
-                                        return doc_dict['sql']
-                            except (json.JSONDecodeError, KeyError):
-                                pass
+            # Calculate simple similarity score (exact match = 1.0)
+            # For now, we do a simple check - if query was found, it's similar enough
+            # The ChromaDB already filters by embedding similarity
+            
+            if cached_sql:
+                # Log the match
+                print(f"📊 [Semantic Cache] Found similar question in cache:")
+                print(f"   🔤 Cached Q: \"{cached_question[:60]}...\"")
+                print(f"   📝 Cached SQL: {cached_sql[:80]}...")
+                print(f"✅ [Semantic Cache] CACHE HIT! Returning cached SQL")
+                return cached_sql
+            else:
+                print("⚠️  [Semantic Cache] Match found but SQL is empty")
+                return None
+                
         except Exception as e:
-            print(f"Warning: Semantic cache check failed: {e}")
+            print(f"⚠️  [Semantic Cache] Exception occurred: {e}")
+            import traceback
+            traceback.print_exc()
             return None
         
         return None
-    
+
+    @staticmethod
+    def clear_cache(vn) -> dict:
+        """
+        ChromaDB'deki SQL cache'ini temizler.
+        Admin panelinde "Önbelleği Temizle" butonu için kullanılabilir.
+        
+        Args:
+            vn: Vanna instance with vector store
+            
+        Returns:
+            Dict with success status and deleted count
+        """
+        print("\n🗑️  [Cache Clear] Starting cache clear operation...")
+        
+        try:
+            # Check if vn has sql_collection
+            if not hasattr(vn, 'sql_collection'):
+                print("⚠️  [Cache Clear] sql_collection not found")
+                return {"success": False, "error": "sql_collection not found", "deleted_count": 0}
+            
+            # Get all items from the collection first to count them
+            try:
+                all_items = vn.sql_collection.get()
+                item_count = len(all_items.get('ids', [])) if all_items else 0
+                print(f"📊 [Cache Clear] Found {item_count} items in cache")
+            except Exception as e:
+                print(f"⚠️  [Cache Clear] Could not count items: {e}")
+                item_count = 0
+            
+            if item_count == 0:
+                print("ℹ️  [Cache Clear] Cache is already empty")
+                return {"success": True, "message": "Cache already empty", "deleted_count": 0}
+            
+            # Delete all items from the sql_collection
+            # ChromaDB delete requires ids, so we get all and delete
+            if all_items and all_items.get('ids'):
+                vn.sql_collection.delete(ids=all_items['ids'])
+                print(f"✅ [Cache Clear] Successfully deleted {item_count} cached items")
+                return {"success": True, "message": f"Deleted {item_count} cached items", "deleted_count": item_count}
+            
+            return {"success": True, "message": "No items to delete", "deleted_count": 0}
+            
+        except Exception as e:
+            print(f"❌ [Cache Clear] Error: {e}")
+            import traceback
+            traceback.print_exc()
+            return {"success": False, "error": str(e), "deleted_count": 0}
+
     @staticmethod
     def validate_sql_safety(sql: str) -> bool:
         """

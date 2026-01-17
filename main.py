@@ -485,7 +485,7 @@ async def generate_sql(request_data: GenerateSqlRequest, request: Request, strea
                 print(f"Warning: Failed to contextualize question: {e}")
 
         # Step 1: Check semantic cache first
-        cached_sql = QueryService.check_semantic_cache(vn, question, threshold=0.3)
+        cached_sql = QueryService.check_semantic_cache(vn, question)
         if cached_sql:
             sql = cached_sql.strip()
             query_id = hashlib.md5(f"{question}_{sql}".encode()).hexdigest()
