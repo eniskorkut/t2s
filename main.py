@@ -13,9 +13,11 @@ import hashlib
 import pandas as pd
 import sqlite3
 import re
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+import json
+import asyncio
 from vanna_config import MyVanna, get_default_config
 from services import DatabaseService, AuthService, UserService, QueryService, ChatService
 from api import auth, queries, chat
@@ -95,6 +97,11 @@ def check_and_create_missing_tables(db_path):
                 hire_date DATE
             )
         """)
+        # Add indexes for performance
+        cursor.execute("CREATE INDEX idx_employees_name ON employees(name)")
+        cursor.execute("CREATE INDEX idx_employees_dept ON employees(department)")
+        cursor.execute("CREATE INDEX idx_employees_salary ON employees(salary)")
+        
         # Insert sample data
         print("   📊 Inserting sample employee data...")
         employees_data = [
@@ -221,6 +228,14 @@ def check_and_create_missing_tables(db_path):
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
+    else:
+        # Table exists, check for missing is_pinned column
+        cursor.execute("PRAGMA table_info(chat_sessions)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if "is_pinned" not in columns:
+            print("⚠️  'is_pinned' column not found in 'chat_sessions'. Adding...")
+            cursor.execute("ALTER TABLE chat_sessions ADD COLUMN is_pinned BOOLEAN DEFAULT 0")
+            conn.commit() # Commit immediately for safety
     
     # Check and create chat_messages table
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='chat_messages'")
@@ -310,7 +325,7 @@ async def startup_event():
     sys.stdout.flush()
     
     # Initialize Vanna instance
-    print("🔧 Initializing Vanna AI instance...", flush=True)
+    print("🔧 Initializing Vanna AI instance (v1.1 - 3B Model Optimized)...", flush=True)
     try:
         config = get_default_config()
         print(f"   Config: model={config.get('model')}, host={config.get('ollama_host')}", flush=True)
@@ -414,54 +429,35 @@ def generate_query_variations(question: str) -> list:
     return variations[:3]  # Maksimum 3 öneri
 
 
-def generate_sql_explanation(question: str, sql: str) -> str:
-    """
-    SQL sorgusunu analiz ederek kısa Türkçe açıklama oluşturur.
-    Backend'de tüm mantık işlemleri burada yapılır.
-    Açıklamalar kaldırıldı - sadece SQL gösteriliyor.
-    """
-    sql_upper = sql.upper().strip()
-    
-    # COUNT sorguları
-    if 'COUNT(*)' in sql_upper or 'COUNT(' in sql_upper:
-        if 'FROM EMPLOYEES' in sql_upper:
-            return 'Toplam çalışan sayısını buluyorum.'
-        return 'Kayıt sayısını buluyorum.'
-    
-    # SELECT sorguları
-    if sql_upper.startswith('SELECT'):
-        if 'WHERE' in sql_upper:
-            return 'Filtrelenmiş verileri getiriyorum.'
-        if 'JOIN' in sql_upper:
-            return 'Birleştirilmiş verileri getiriyorum.'
-        if 'ORDER BY' in sql_upper:
-            return 'Sıralanmış verileri getiriyorum.'
-        return 'Verileri getiriyorum.'
-    
-    # Varsayılan açıklama
-    return 'SQL sorgusu oluşturuldu.'
-
-
 # Vanna Legacy API endpoints (for compatibility with frontend)
 @app.post("/api/v0/generate_sql")
-async def generate_sql(request_data: GenerateSqlRequest, request: Request):
+async def generate_sql(request_data: GenerateSqlRequest, request: Request, stream: bool = Query(False)):
     """
     Generate SQL from natural language question.
-    Legacy Vanna API endpoint upgraded to support history.
+    Legacy Vanna API endpoint upgraded to support history and streaming.
     Tüm backend mantığı burada işlenir.
     Semantic cache kontrolü ile performans artışı sağlanır.
     """
+    start_time = time.monotonic()
+    question = request_data.question
     try:
         vn = request.app.state.vanna_instance
-        question = request_data.question
+        chat_service = request.app.state.chat_service
         history = request_data.history
+        session_id = request_data.session_id
+
+        # Save user message to history if session exists
+        if session_id:
+            chat_service.add_message(
+                session_id=session_id,
+                role='user',
+                content=question
+            )
 
         # Step 0: Contextualize question if history exists
         if history:
-            # Sadece son 5 mesajı al
+            # ... existing contextualization logic ...
             recent_history = history[-5:]
-            
-            # Geçmiş mesajları metne dönüştür
             history_text = ""
             for msg in recent_history:
                 history_text += f"{msg.role}: {msg.content}\n"
@@ -476,36 +472,34 @@ async def generate_sql(request_data: GenerateSqlRequest, request: Request):
             Eğer son soru zaten bağımsızsa, aynen bırak.
             Soru veritabanı ile ilgili olmalı.
             Sadece yeniden yazılmış soruyu döndür, açıklama ekleme.
-            
-            Örnek:
-            Geçmiş: 
-            user: İstanbul satışları kaç?
-            assistant: SELECT ...
-            Son Soru: Peki ya Ankara?
-            Çıktı: Ankara satışları kaç?
             """
             
             try:
-                # Vanna'nın LLM'ini kullanarak soruyu yeniden yaz
                 system_msg = vn.system_message("Sen bir soru netleştirme asistanısın.")
                 user_msg = vn.user_message(prompt)
                 contextual_question = vn.submit_prompt([system_msg, user_msg])
                 
                 if contextual_question and contextual_question.strip():
-                    print(f"Original Question: {question}")
-                    print(f"Contextualized Question: {contextual_question}")
                     question = contextual_question.strip()
             except Exception as e:
                 print(f"Warning: Failed to contextualize question: {e}")
-                # Hata durumunda orijinal soruyu kullan
-        
+
         # Step 1: Check semantic cache first
         cached_sql = QueryService.check_semantic_cache(vn, question, threshold=0.3)
         if cached_sql:
-            # Cache hit - return cached SQL
             sql = cached_sql.strip()
             query_id = hashlib.md5(f"{question}_{sql}".encode()).hexdigest()
-            explanation = generate_sql_explanation(question, sql)
+            explanation = QueryService.generate_sql_explanation(question, sql)
+            
+            # Save to chat history if session exists
+            if session_id:
+                full_content = f"{explanation}\n\n```sql\n{sql}\n```" if explanation else f"```sql\n{sql}\n```"
+                chat_service.add_message(
+                    session_id=session_id,
+                    role='assistant',
+                    content=full_content,
+                    sql_query=sql
+                )
             
             return {
                 "type": "sql",
@@ -515,12 +509,42 @@ async def generate_sql(request_data: GenerateSqlRequest, request: Request):
                 "from_cache": True
             }
         
-        # Step 2: Cache miss - generate SQL using LLM
+        # Step 2: Streaming support
+        if stream:
+            async def sql_generator():
+                full_sql = ""
+                # Stream tokens from Vanna
+                for token in vn.generate_sql_stream(question=question):
+                    full_sql += token
+                    yield f"data: {json.dumps({'token': token})}\n\n"
+                    await asyncio.sleep(0.01) # Small delay for smoother feel
+                
+                # After streaming finished, send the final metadata
+                query_id = hashlib.md5(f"{question}_{full_sql}".encode()).hexdigest()
+                explanation = QueryService.generate_sql_explanation(question, full_sql)
+                
+                # Save to legacy cache
+                sql_cache[query_id] = {"question": question, "sql": full_sql}
+                
+                # Save to chat history if session exists
+                if session_id:
+                    full_content = f"{explanation}\n\n```sql\n{full_sql}\n```" if explanation else f"```sql\n{full_sql}\n```"
+                    chat_service.add_message(
+                        session_id=session_id,
+                        role='assistant',
+                        content=full_content,
+                        sql_query=full_sql
+                    )
+                
+                yield f"data: {json.dumps({'type': 'metadata', 'id': query_id, 'explanation': explanation})}\n\n"
+                yield "data: [DONE]\n\n"
+
+            return StreamingResponse(sql_generator(), media_type="text/event-stream")
+
+        # Step 3: Standard (non-streaming) path
         llm_response = vn.generate_sql(question=question)
         
-        # LLM yanıtının SQL olup olmadığını kontrol et
         if not is_valid_sql(llm_response):
-            # SQL değilse, sorguyu çeşitlendir ve öneriler sun
             variations = generate_query_variations(question)
             suggestions_text = " veya ".join([f'"{v}"' for v in variations])
             
@@ -534,20 +558,20 @@ async def generate_sql(request_data: GenerateSqlRequest, request: Request):
                 }
             )
         
-        # SQL geçerli, devam et
         sql = llm_response.strip()
-        
-        # Generate a unique ID for this SQL query
         query_id = hashlib.md5(f"{question}_{sql}".encode()).hexdigest()
+        sql_cache[query_id] = {"question": question, "sql": sql}
+        explanation = QueryService.generate_sql_explanation(question, sql)
         
-        # Store SQL in cache for run_sql endpoint (legacy compatibility)
-        sql_cache[query_id] = {
-            "question": question,
-            "sql": sql
-        }
-        
-        # Backend'de kısa SQL açıklaması oluştur
-        explanation = generate_sql_explanation(question, sql)
+        # Save to chat history if session exists
+        if session_id:
+            full_content = f"{explanation}\n\n```sql\n{sql}\n```" if explanation else f"```sql\n{sql}\n```"
+            chat_service.add_message(
+                session_id=session_id,
+                role='assistant',
+                content=full_content,
+                sql_query=sql
+            )
         
         return {
             "type": "sql",
@@ -557,9 +581,8 @@ async def generate_sql(request_data: GenerateSqlRequest, request: Request):
             "from_cache": False
         }
     except Exception as e:
+        # ... existing error logic ...
         error_msg = shorten_error_message(str(e))
-        
-        # Hata durumunda da sorgu çeşitlendirme öner
         variations = generate_query_variations(question)
         suggestions_text = " veya ".join([f'"{v}"' for v in variations])
         
@@ -572,6 +595,10 @@ async def generate_sql(request_data: GenerateSqlRequest, request: Request):
                 "message": f"Sorgu oluşturulamadı. Şunu mu demek istiyorsunuz: {suggestions_text}?"
             }
         )
+    finally:
+        duration = time.monotonic() - start_time
+        source = "stream" if stream else "standard"
+        print(f"[Perf] generate_sql {source} session={session_id} duration={duration:.2f}s question=\"{question[:80]}\"")
 
 
 @app.get("/health")

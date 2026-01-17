@@ -65,6 +65,7 @@ class RunSqlRequest(BaseModel):
     """Run SQL request model."""
     sql: str
     question: Optional[str] = None  # Kullanıcının sorusu - hata açıklaması için gerekli
+    session_id: Optional[str] = None # Mesajı kaydetmek için gerekli
 
 
 class ChatMessage(BaseModel):
@@ -77,3 +78,11 @@ class GenerateSqlRequest(BaseModel):
     """Generate SQL request model."""
     question: str
     history: List[ChatMessage] = []
+    session_id: Optional[str] = None # Mesajı kaydetmek için gerekli
+
+
+class ChatMessageRequest(BaseModel):
+    """Unified chat message request."""
+    question: str
+    history: List[ChatMessage] = []
+    stream: bool = True

@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import JSONResponse
 from typing import List
 from models.schemas import SaveQueryRequest, QueryResponse, QueriesResponse, RunSqlRequest
-from api.dependencies import get_query_service, get_current_user, get_vanna_instance
-from services import QueryService
+from api.dependencies import get_query_service, get_current_user, get_vanna_instance, get_chat_service
+from services import QueryService, ChatService
 
 router = APIRouter()
 
@@ -91,7 +91,8 @@ async def delete_query(
 async def run_sql(
     sql_request: RunSqlRequest,
     request: Request,
-    vn = Depends(get_vanna_instance)
+    vn = Depends(get_vanna_instance),
+    chat_service: ChatService = Depends(get_chat_service)
 ):
     """
     Run SQL query and return results.
@@ -100,6 +101,7 @@ async def run_sql(
     """
     sql = sql_request.sql.strip()
     question = sql_request.question
+    session_id = sql_request.session_id
     
     try:
         # Check if run_sql is set
@@ -142,7 +144,7 @@ async def run_sql(
             plotly_json = QueryService.generate_plotly_chart(df, sql)
         
         # Return results (limit to 10 rows for response)
-        return {
+        response_data = {
             "type": "df",
             "data": data,
             "plotly_json": plotly_json,
@@ -151,6 +153,22 @@ async def run_sql(
             "error": None,
             "sql": sql
         }
+
+        # Save results to chat history if session exists
+        if session_id:
+            try:
+                chat_service.add_message(
+                    session_id=session_id,
+                    role='assistant',
+                    content="Sorgu sonuçları:",
+                    sql_query=sql,
+                    data=data,
+                    plotly_json=plotly_json
+                )
+            except Exception as e:
+                print(f"Warning: Failed to save run_sql results to history: {e}")
+
+        return response_data
     except Exception as e:
         error_msg = str(e)
         

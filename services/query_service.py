@@ -215,6 +215,33 @@ class QueryService:
         return True
 
     @staticmethod
+    def generate_sql_explanation(question: str, sql: str) -> str:
+        """
+        SQL sorgusunu analiz ederek kısa Türkçe açıklama oluşturur.
+        Backend'de tüm mantık işlemleri burada yapılır.
+        """
+        sql_upper = sql.upper().strip()
+        
+        # COUNT sorguları
+        if 'COUNT(*)' in sql_upper or 'COUNT(' in sql_upper:
+            if 'FROM EMPLOYEES' in sql_upper:
+                return 'Toplam çalışan sayısını buluyorum.'
+            return 'Kayıt sayısını buluyorum.'
+        
+        # SELECT sorguları
+        if sql_upper.startswith('SELECT'):
+            if 'WHERE' in sql_upper:
+                return 'Filtrelenmiş verileri getiriyorum.'
+            if 'JOIN' in sql_upper:
+                return 'Birleştirilmiş verileri getiriyorum.'
+            if 'ORDER BY' in sql_upper:
+                return 'Sıralanmış verileri getiriyorum.'
+            return 'Verileri getiriyorum.'
+        
+        # Varsayılan açıklama
+        return 'SQL sorgusu oluşturuldu.'
+
+    @staticmethod
     def generate_plotly_chart(df: pd.DataFrame, sql: str) -> Optional[Dict[str, Any]]:
         """
         DataFrame'den otomatik olarak uygun Plotly grafiği oluşturur.

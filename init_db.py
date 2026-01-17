@@ -102,82 +102,11 @@ CREATE TABLE employee_projects (
 def get_documentation():
     """Returns documentation about database schema and relationships."""
     return """
-DATABASE SCHEMA AND RELATIONSHIPS:
-
-1. EMPLOYEES TABLE (Main Table):
-   - Primary Key: id
-   - Columns: id, name, department, salary, hire_date
-   - This is the main employee table containing basic employee information.
-
-2. EMPLOYEE_PERSONAL_INFO TABLE (One-to-One Relationship):
-   - Primary Key: id
-   - Foreign Key: employee_id → employees(id) ON DELETE CASCADE
-   - Columns: id, employee_id, email, phone, address, birth_date
-   - Relationship: Each employee has exactly one personal info record
-   - To join: JOIN employee_personal_info epi ON employees.id = epi.employee_id
-   - Example: SELECT e.name, epi.email FROM employees e JOIN employee_personal_info epi ON e.id = epi.employee_id
-
-3. PROJECTS TABLE (Standalone Table):
-   - Primary Key: id
-   - Columns: id, name, description, start_date, end_date, budget
-   - This table has NO direct relationship with employees table.
-   - IMPORTANT: You cannot join employees directly to projects!
-
-4. EMPLOYEE_PROJECTS TABLE (Many-to-Many Junction Table):
-   - Primary Key: id
-   - Foreign Keys: 
-     * employee_id → employees(id) ON DELETE CASCADE
-     * project_id → projects(id) ON DELETE CASCADE
-   - Columns: id, employee_id, project_id, role, hours_worked
-   - UNIQUE constraint: (employee_id, project_id) - prevents duplicate assignments
-   - This is a JUNCTION TABLE that connects employees to projects
-   - Relationship: Many-to-Many
-     * One employee can work on multiple projects
-     * One project can have multiple employees
-   
-   CRITICAL JOINING RULES:
-   - To query employees and their projects, you MUST use this junction table
-   - Correct pattern:
-     SELECT e.name, p.name as project_name, ep.role
-     FROM employees e
-     JOIN employee_projects ep ON e.id = ep.employee_id
-     JOIN projects p ON ep.project_id = p.id
-   
-   - WRONG (DO NOT DO THIS):
-     SELECT * FROM employees e JOIN projects p ON e.project_id = p.id
-     (This is incorrect because employees table has NO project_id column!)
-
-COMMON QUERY PATTERNS:
-
-1. Get employees working on a specific project:
-   SELECT e.name, e.salary, ep.role, ep.hours_worked
-   FROM employees e
-   JOIN employee_projects ep ON e.id = ep.employee_id
-   JOIN projects p ON ep.project_id = p.id
-   WHERE p.name = 'Project Name'
-   ORDER BY e.salary DESC
-
-2. Get highest paid employee on a project:
-   SELECT e.name, e.salary
-   FROM employees e
-   JOIN employee_projects ep ON e.id = ep.employee_id
-   JOIN projects p ON ep.project_id = p.id
-   WHERE p.name = 'Project Name'
-   ORDER BY e.salary DESC
-   LIMIT 1
-
-3. Get all projects for an employee:
-   SELECT p.name, p.description, ep.role, ep.hours_worked
-   FROM projects p
-   JOIN employee_projects ep ON p.id = ep.project_id
-   JOIN employees e ON ep.employee_id = e.id
-   WHERE e.name = 'Employee Name'
-
-4. Get employee contact info (one-to-one join):
-   SELECT e.name, e.department, epi.email, epi.phone
-   FROM employees e
-   JOIN employee_personal_info epi ON e.id = epi.employee_id
-   WHERE e.department = 'Engineering'
+1. EMPLOYEES: Main table. Columns: id, name, department, salary, hire_date.
+2. EMPLOYEE_PERSONAL_INFO: Personal details. Join: employees.id = epi.employee_id.
+3. PROJECTS: Project list. No direct link to employees.
+4. EMPLOYEE_PROJECTS: Junction table. Links employees to projects.
+   Join: employees e JOIN employee_projects ep ON e.id = ep.employee_id JOIN projects p ON ep.project_id = p.id.
 """
 
 
@@ -239,6 +168,13 @@ def create_database(db_path):
     cursor.execute(ddls["chat_messages"])
     # Business data tables
     cursor.execute(ddls["employees"])
+    
+    # Add indexes for performance
+    print("⚡ Adding indexes for performance...")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_employees_name ON employees(name)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_employees_dept ON employees(department)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_employees_salary ON employees(salary)")
+    
     cursor.execute(ddls["employee_personal_info"])
     cursor.execute(ddls["projects"])
     cursor.execute(ddls["employee_projects"])

@@ -77,6 +77,7 @@ class ChatService:
         """
         try:
             session_id = str(uuid.uuid4())
+            print(f"DEBUG: Creating session {session_id} for user {user_id}")
             query = """
                 INSERT INTO chat_sessions (id, user_id, title, created_at, updated_at)
                 VALUES (?, ?, ?, datetime('now'), datetime('now'))
@@ -158,7 +159,7 @@ class ChatService:
         sql_query: Optional[str] = None,
         data: Optional[List[Dict]] = None,
         plotly_json: Optional[Dict] = None
-    ) -> Optional[int]:
+    ) -> Optional[Dict]:
         """
         Sohbete yeni mesaj ekler.
         
@@ -171,9 +172,12 @@ class ChatService:
             plotly_json: Grafik verisi (varsa)
             
         Returns:
-            Message ID veya None
+            Eklenen mesaj (dict) veya None
         """
         try:
+            # Ensure session_id is a string
+            session_id = str(session_id)
+            
             # JSON serialize et
             data_json = json.dumps(data) if data else None
             plotly_json_str = json.dumps(plotly_json) if plotly_json else None
@@ -189,12 +193,27 @@ class ChatService:
                 (session_id, role, content, sql_query, data_json, plotly_json_str)
             )
             
+            if not message_id:
+                print(f"Warning: execute_insert returned None for session {session_id}")
+                return None
+            
             # Session'ın updated_at'ini güncelle
             self._update_session_timestamp(session_id)
             
-            return message_id
+            # Eklenen mesajı geri döndür (frontend için)
+            return {
+                "id": str(message_id),
+                "role": role,
+                "content": content,
+                "sql": sql_query,
+                "data": data,
+                "plotly_json": plotly_json,
+                "created_at": datetime.now().isoformat()
+            }
         except Exception as e:
-            print(f"Error adding message: {e}")
+            print(f"Error adding message to session {session_id}: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def get_session_messages(
@@ -220,7 +239,7 @@ class ChatService:
             return []
         
         query = """
-            SELECT id, role, content, sql_query, data, plotly_json, created_at
+            SELECT id, role, content, sql_query as sql, data, plotly_json, created_at
             FROM chat_messages
             WHERE session_id = ?
             ORDER BY created_at ASC
