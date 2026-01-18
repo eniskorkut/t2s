@@ -20,7 +20,7 @@ import json
 import asyncio
 from vanna_config import MyVanna, get_default_config
 from services import DatabaseService, AuthService, UserService, QueryService, ChatService
-from api import auth, queries, chat
+from api import auth, queries, chat, admin
 
 
 def wait_for_ollama(ollama_host="http://ollama:11434", max_retries=30, retry_delay=2):
@@ -375,6 +375,7 @@ async def startup_event():
 app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(queries.router, prefix="/api", tags=["queries"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
+app.include_router(admin.router) # Prefix defined in router (/api/admin)
 
 
 # Simple in-memory cache for SQL queries (for legacy API compatibility)

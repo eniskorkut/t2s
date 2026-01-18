@@ -5,7 +5,7 @@ Following Dependency Inversion Principle - Depends on service abstractions
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from models.schemas import LoginRequest, RegisterRequest, LoginResponse, UserResponse
+from models.schemas import LoginRequest, RegisterRequest, LoginResponse, UserResponse, ResetPasswordRequest
 from api.dependencies import get_auth_service, get_user_service, get_current_user
 from services import AuthService, UserService
 
@@ -30,7 +30,11 @@ async def login(
     response = JSONResponse(
         content=LoginResponse(
             success=True,
-            user=UserResponse(id=user['id'], email=user['email'])
+            user=UserResponse(
+                id=user['id'], 
+                email=user['email'],
+                role=user.get('role', 'user')
+            )
         ).model_dump()
     )
     
@@ -103,5 +107,30 @@ async def get_current_user_info(
     return UserResponse(
         id=current_user['id'],
         email=current_user['email'],
-        created_at=str(current_user.get('created_at', ''))
+        created_at=str(current_user.get('created_at', '')),
+        role=current_user.get('role', 'user')
     )
+
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(
+    request: ResetPasswordRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """Reset password endpoint."""
+    if len(request.new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 6 characters"
+        )
+        
+    success = auth_service.reset_password(request.email, request.new_password)
+    
+    if not success:
+        # Don't reveal if user exists or not for security, but for now helpful
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+        
+    return {"success": True, "message": "Password reset successfully"}

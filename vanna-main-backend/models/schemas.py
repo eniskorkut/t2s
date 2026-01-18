@@ -23,6 +23,39 @@ class UserResponse(BaseModel):
     id: int
     email: str
     created_at: Optional[str] = None
+    role: str = "user"
+
+    class Config:
+        from_attributes = True
+
+
+class UpdateUserRoleRequest(BaseModel):
+    """Update user role request model."""
+    role: str
+
+
+class DDLResponse(BaseModel):
+    """DDL response model."""
+    ddl: str
+
+
+class DDLTrainRequest(BaseModel):
+    """DDL training request model."""
+    ddl: str
+
+
+class ResetPasswordRequest(BaseModel):
+    """Reset password request model."""
+    email: str
+    new_password: str
+
+
+class SchemaDefinition(BaseModel):
+    """Schema definition model."""
+    id: int
+    user_id: int
+    ddl_content: str
+    created_at: str
 
     class Config:
         from_attributes = True

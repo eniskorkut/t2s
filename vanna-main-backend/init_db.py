@@ -16,7 +16,17 @@ CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'user',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+""",
+        "schema_definitions": """
+CREATE TABLE schema_definitions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    ddl_content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 """,
         "user_saved_queries": """
@@ -163,6 +173,7 @@ def create_database(db_path):
     print("📋 Creating tables...")
     # User management tables
     cursor.execute(ddls["users"])
+    cursor.execute(ddls["schema_definitions"])
     cursor.execute(ddls["user_saved_queries"])
     cursor.execute(ddls["chat_sessions"])
     cursor.execute(ddls["chat_messages"])

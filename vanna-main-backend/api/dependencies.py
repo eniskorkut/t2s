@@ -62,8 +62,8 @@ async def get_current_user(
         )
     
     try:
-        user_id = int(user_id)
-        user = user_service.get_user_by_id(user_id)
+        user_id_int = int(user_id)
+        user = user_service.get_user_by_id(user_id_int)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -75,3 +75,15 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication"
         )
+
+
+def require_admin(current_user: dict = Depends(get_current_user)):
+    """
+    Dependency to check if the user has admin role.
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+    return current_user

@@ -4,6 +4,7 @@ Contains the MyVanna class that combines ChromaDB and Ollama for RAG-based Text-
 """
 from vanna.legacy.ollama import Ollama
 from vanna.legacy.chromadb import ChromaDB_VectorStore
+from chromadb.utils import embedding_functions
 
 
 class MyVanna(ChromaDB_VectorStore, Ollama):
@@ -19,6 +20,15 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
         config.setdefault("path", "./chroma_db")
         # Increase timeout for model pulling (10 minutes = 600 seconds)
         config.setdefault("ollama_timeout", 600.0)
+        
+        # Initialize Multilingual Embedding Function
+        # This replaces the default English-only embedding model
+        # paraphrase-multilingual-MiniLM-L12-v2 works great for Turkish and is faster
+        print("🔧 Initializing Multilingual Embedding Model...")
+        embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name="paraphrase-multilingual-MiniLM-L12-v2"
+        )
+        config["embedding_function"] = embedding_function
         
         # Initialize parent classes
         ChromaDB_VectorStore.__init__(self, config=config)

@@ -139,16 +139,16 @@ class QueryService:
             return False
     
     @staticmethod
-    def check_semantic_cache(vn, question: str, similarity_threshold: float = 0.85) -> Optional[str]:
+    def check_semantic_cache(vn, question: str, distance_threshold: float = 0.65) -> Optional[str]:
         """
         Check semantic cache for similar questions.
-        Uses Vanna's built-in get_similar_question_sql which handles embedding correctly.
+        Uses ChromaDB vector store with proper distance threshold.
         
         Args:
             vn: Vanna instance with vector store
             question: User's question
-            similarity_threshold: Minimum similarity to consider a cache hit (0-1, higher = stricter)
-                                  Note: This is similarity, not distance. 0.85 = 85% similar
+            distance_threshold: Maximum distance to consider a cache hit (lower = stricter)
+                               0.3 = very similar, 0.5 = somewhat similar
             
         Returns:
             Cached SQL string if similar question found, None otherwise
@@ -156,32 +156,64 @@ class QueryService:
         print(f"\n🔍 [Semantic Cache] Checking cache for question: \"{question[:80]}...\"")
         
         try:
-            # Use Vanna's built-in method which handles embedding correctly
-            # This method uses the ChromaDB_VectorStore's get_similar_question_sql
-            from vanna.legacy.chromadb import ChromaDB_VectorStore
+            # Check if vn has sql_collection (ChromaDB_VectorStore)
+            if not hasattr(vn, 'sql_collection'):
+                print("⚠️  [Semantic Cache] sql_collection not found on Vanna instance")
+                return None
             
-            similar_questions = ChromaDB_VectorStore.get_similar_question_sql(vn, question, n_results=1)
+            # Query ChromaDB with distances to check similarity
+            results = vn.sql_collection.query(
+                query_texts=[question],
+                n_results=1,
+                include=["metadatas", "distances", "documents"]
+            )
             
-            if not similar_questions or len(similar_questions) == 0:
+            # Safety check: Ensure results structure is valid
+            if not results:
+                print("📊 [Semantic Cache] No results from ChromaDB")
+                print("❌ [Semantic Cache] CACHE MISS - No cached queries")
+                return None
+            
+            distances = results.get('distances')
+            documents = results.get('documents')
+            
+            # Safety checks
+            if not distances or len(distances) == 0 or len(distances[0]) == 0:
                 print("📊 [Semantic Cache] No similar questions found in cache")
                 print("❌ [Semantic Cache] CACHE MISS - No cached queries")
                 return None
             
-            # Get the first (most similar) result
-            top_match = similar_questions[0]
-            cached_question = top_match.get('question', '')
-            cached_sql = top_match.get('sql', '')
+            if not documents or len(documents) == 0 or len(documents[0]) == 0:
+                print("⚠️  [Semantic Cache] Documents array is empty")
+                return None
             
-            # Calculate simple similarity score (exact match = 1.0)
-            # For now, we do a simple check - if query was found, it's similar enough
-            # The ChromaDB already filters by embedding similarity
+            distance = distances[0][0]
+            doc = documents[0][0]
             
+            # Parse the cached document
+            try:
+                doc_dict = json.loads(doc) if isinstance(doc, str) else doc
+                cached_question = doc_dict.get('question', '')
+                cached_sql = doc_dict.get('sql', '')
+            except (json.JSONDecodeError, TypeError):
+                print("⚠️  [Semantic Cache] Failed to parse cached document")
+                return None
+            
+            # Log match details
+            print(f"📊 [Semantic Cache] Found potential match:")
+            print(f"   🔤 Cached Q: \"{cached_question[:60]}...\"")
+            print(f"   📏 Distance: {distance:.4f} (threshold: {distance_threshold})")
+            
+            # CRITICAL: Check distance threshold to prevent false positives
+            if distance > distance_threshold:
+                print(f"❌ [Semantic Cache] CACHE MISS - Distance {distance:.4f} > threshold {distance_threshold}")
+                print(f"   ℹ️  Questions are not similar enough, falling back to LLM")
+                return None
+            
+            # Distance is within threshold - cache hit!
             if cached_sql:
-                # Log the match
-                print(f"📊 [Semantic Cache] Found similar question in cache:")
-                print(f"   🔤 Cached Q: \"{cached_question[:60]}...\"")
                 print(f"   📝 Cached SQL: {cached_sql[:80]}...")
-                print(f"✅ [Semantic Cache] CACHE HIT! Returning cached SQL")
+                print(f"✅ [Semantic Cache] CACHE HIT! Distance {distance:.4f} is below threshold")
                 return cached_sql
             else:
                 print("⚠️  [Semantic Cache] Match found but SQL is empty")

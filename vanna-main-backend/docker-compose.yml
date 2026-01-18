@@ -14,11 +14,13 @@ services:
     ports:
       - "8084:8084"
     volumes:
+      - .:/app
       - ./chroma_db:/app/chroma_db
       - ./db_data:/app/db_data
     depends_on:
       - ollama
     restart: unless-stopped
+    command: python -u -m uvicorn main:app --host 0.0.0.0 --port 8084 --reload
     environment:
       - OLLAMA_HOST=http://ollama:11434
 

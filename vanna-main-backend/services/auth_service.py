@@ -64,7 +64,7 @@ class AuthService:
         Returns:
             User dictionary if authentication successful, None otherwise
         """
-        query = "SELECT id, email, password_hash FROM users WHERE email = ?"
+        query = "SELECT id, email, password_hash, role FROM users WHERE email = ?"
         results = self.db_service.execute_query(query, (email,))
         
         if not results:
@@ -76,7 +76,8 @@ class AuthService:
             # Remove password hash from returned user data
             return {
                 'id': user['id'],
-                'email': user['email']
+                'email': user['email'],
+                'role': user['role']
             }
         
         return None
@@ -99,18 +100,51 @@ class AuthService:
         if existing:
             return None
         
+        # Check if this is the first user
+        count_query = "SELECT count(*) as count FROM users"
+        count_result = self.db_service.execute_query(count_query)
+        role = 'admin' if count_result[0]['count'] == 0 else 'user'
+        
         # Create new user
         password_hash = self.hash_password(password)
         insert_query = """
-            INSERT INTO users (email, password_hash)
-            VALUES (?, ?)
+            INSERT INTO users (email, password_hash, role)
+            VALUES (?, ?, ?)
         """
         
         try:
             user_id = self.db_service.execute_insert(
                 insert_query,
-                (email, password_hash)
+                (email, password_hash, role)
             )
             return user_id
         except sqlite3.IntegrityError:
             return None
+
+    def reset_password(self, email: str, new_password: str) -> bool:
+        """
+        Reset user password.
+        
+        Args:
+            email: User email
+            new_password: New password
+            
+        Returns:
+            True if successful, False if user not found
+        """
+        # Check if user exists
+        query = "SELECT id FROM users WHERE email = ?"
+        results = self.db_service.execute_query(query, (email,))
+        
+        if not results:
+            return False
+            
+        password_hash = self.hash_password(new_password)
+        update_query = "UPDATE users SET password_hash = ? WHERE email = ?"
+        
+        row_count = self.db_service.execute_update(
+            update_query,
+            (password_hash, email)
+        )
+        
+        return row_count > 0

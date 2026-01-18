@@ -86,3 +86,32 @@ class DatabaseService:
             cursor = conn.cursor()
             cursor.execute(query, params)
             return cursor.lastrowid
+    
+    def get_database_schema(self, vn) -> str:
+        """
+        Get the database schema DDL using Vanna's run_sql.
+        
+        Args:
+            vn: Vanna instance
+            
+        Returns:
+            str: Combined DDL statements for all tables
+        """
+        # SQLite specific query as requested
+        query = "SELECT sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        
+        try:
+            df = vn.run_sql(query)
+            
+            if df is None or df.empty:
+                return "-- No schema found or empty database."
+                
+            ddl_parts = []
+            for _, row in df.iterrows():
+                if row['sql']:
+                    ddl_parts.append(row['sql'] + ";")
+                    
+            return "\n\n".join(ddl_parts)
+        except Exception as e:
+            print(f"Error getting schema: {e}")
+            return f"-- Error fetching schema: {str(e)}"
