@@ -1,28 +1,36 @@
-build
-**.egg-info
-venn
-.DS_Store
-tests/__pycache__
-__pycache__/
-.idea
-.coverage
-docs/*.html
-.ipynb_checkpoints/
-.tox/
-notebooks/chroma.sqlite3
-dist
-.env
-*.sqlite
-htmlcov
-chroma.sqlite3
-*.bin
-.coverage.*
-milvus.db
-.milvus.db.lock
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Frontend builds and dependencies
-frontends/**/node_modules/
-frontends/**/static/
-frontends/**/.storybook-static/
-frontends/**/package-lock.json
-frontends/**/.mypy_cache/
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+.env
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
