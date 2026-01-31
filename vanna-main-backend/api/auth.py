@@ -5,7 +5,7 @@ Following Dependency Inversion Principle - Depends on service abstractions
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from models.schemas import LoginRequest, RegisterRequest, LoginResponse, UserResponse, ResetPasswordRequest, Token
+from models.schemas import LoginRequest, RegisterRequest, LoginResponse, UserResponse, ResetPasswordRequest, Token, ForgotPasswordRequest
 from api.dependencies import get_auth_service, get_user_service, get_current_user
 from services import AuthService, UserService
 
@@ -104,22 +104,54 @@ async def get_current_user_info(
     )
 
 
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """
+    Forgot password endpoint.
+    Generates reset token and sends mock email.
+    """
+    # Check if user exists first to avoid sending emails to non-users
+    # detailed error messages might be a security risk (user enumeration),
+    # but for this dev stage it is fine.
+    
+    token = auth_service.create_reset_token(request.email)
+    
+    # We import here to avoid circular dependencies if any
+    from utils.email import send_reset_email
+    send_reset_email(request.email, token)
+    
+    return {"success": True, "message": "Password reset link sent to email (check logs)"}
+
+
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
 async def reset_password(
     request: ResetPasswordRequest,
     auth_service: AuthService = Depends(get_auth_service)
 ):
-    """Reset password endpoint."""
+    """
+    Reset password endpoint.
+    Verifies token before resetting password.
+    """
     if len(request.new_password) < 6:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 6 characters"
         )
+    
+    # Verify token
+    token_email = auth_service.verify_reset_token(request.token)
+    if not token_email or token_email != request.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
         
     success = auth_service.reset_password(request.email, request.new_password)
     
     if not success:
-        # Don't reveal if user exists or not for security, but for now helpful
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"

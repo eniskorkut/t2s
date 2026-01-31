@@ -591,3 +591,12 @@ After editing any file:
 
 > 🔴 **If you find yourself DEFENDING checklist compliance while output looks generic, you have FAILED.**
 > The checklist serves the goal. The goal is NOT to pass the checklist.
+
+## 🛡️ DOCKER-READY DEVELOPMENT STANDARDS
+* **Strict Environment Validation:**
+    * NEVER use `process.env.NEXT_PUBLIC_...` directly in components.
+    * ALWAYS use a type-safe configuration file (e.g., `src/env.mjs` or `src/config.ts`) that validates variables using Zod.
+    * This ensures the app fails to build if Docker arguments are missing, preventing runtime crashes.
+* **Platform Agnostic Code:**
+    * Do not rely on file system paths that are specific to your local OS (MacOS).
+    * Always presume the code might run in a Linux Container.

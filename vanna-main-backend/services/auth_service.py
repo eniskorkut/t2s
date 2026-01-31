@@ -175,3 +175,38 @@ class AuthService:
         to_encode.update({"exp": expire})
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
+
+    def create_reset_token(self, email: str) -> str:
+        """
+        Create a password reset token (valid for 15 minutes).
+        
+        Args:
+            email: User email
+            
+        Returns:
+            Encoded JWT token
+        """
+        data = {
+            "sub": email,
+            "type": "reset"
+        }
+        expires_delta = timedelta(minutes=15)
+        return self.create_access_token(data, expires_delta)
+
+    def verify_reset_token(self, token: str) -> Optional[str]:
+        """
+        Verify a password reset token.
+        
+        Args:
+            token: JWT token
+            
+        Returns:
+            Email if valid, None otherwise
+        """
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            if payload.get("type") != "reset":
+                return None
+            return payload.get("sub")
+        except jwt.JWTError:
+            return None

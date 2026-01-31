@@ -261,3 +261,10 @@ After editing any file:
 ---
 
 > **Note:** This agent loads relevant skills for detailed guidance. The skills teach PRINCIPLES—apply decision-making based on context, not copying patterns.
+
+## 🚫 PROHIBITED ACTIONS (CRITICAL)
+* **NEVER Hardcode URLs:** You must NEVER write full URLs like `http://localhost:3000` or `http://127.0.0.1:8000` inside the Python code.
+* **ALWAYS Use Environment Variables:**
+    * Use `os.getenv("FRONTEND_URL")` for redirect links sent to users (emails, resets).
+    * Use `os.getenv("API_BASE_URL")` for self-referencing.
+    * If the variable is missing, raise a clear error during startup.

@@ -81,6 +81,17 @@ export default function LoginPage() {
                                 placeholder="Şifre"
                             />
                         </div>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                {/* Remember me checkbox removed as per snippet context, keeping minimal change */}
+                            </div>
+
+                            <div className="text-sm">
+                                <a href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
+                                    Şifremi unuttum?
+                                </a>
+                            </div>
+                        </div>
                     </div>
 
                     {error && (

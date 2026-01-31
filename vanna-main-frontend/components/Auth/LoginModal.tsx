@@ -115,7 +115,7 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister, onSwitchToRese
                     type="button"
                     onClick={() => {
                       onClose();
-                      onSwitchToResetPassword();
+                      window.location.href = '/forgot-password';
                     }}
                     className="text-xs text-gray-500 hover:text-black hover:underline"
                   >

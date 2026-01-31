@@ -57,9 +57,15 @@ class DDLTrainRequest(BaseModel):
     ddl: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Forgot password request model."""
+    email: EmailStr
+
+
 class ResetPasswordRequest(BaseModel):
     """Reset password request model."""
     email: str
+    token: str
     new_password: str
 
 
