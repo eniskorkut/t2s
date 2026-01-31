@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api/ApiClient';
 import type { User } from '@/lib/types';
 import { Button } from '@/components/UI/Button';
+import { Modal } from '@/components/UI/Modal';
 import { ChevronLeftIcon } from '@/components/UI/Icons';
 
 export default function AdminPage() {
@@ -59,8 +60,8 @@ export default function AdminPage() {
                             <button
                                 onClick={() => setActiveTab('users')}
                                 className={`py-4 px-6 font-medium text-sm border-b-2 transition-colors ${activeTab === 'users'
-                                        ? 'border-black text-black'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-black text-black'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
                             >
                                 👥 Kullanıcı Yönetimi
@@ -68,8 +69,8 @@ export default function AdminPage() {
                             <button
                                 onClick={() => setActiveTab('database')}
                                 className={`py-4 px-6 font-medium text-sm border-b-2 transition-colors ${activeTab === 'database'
-                                        ? 'border-black text-black'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-black text-black'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
                             >
                                 🗄️ Veritabanı & Eğitim
@@ -139,8 +140,8 @@ function UserManagement() {
                                 <td className="px-4 py-3 text-sm text-black">{user.email}</td>
                                 <td className="px-4 py-3">
                                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'admin'
-                                            ? 'bg-purple-100 text-purple-800'
-                                            : 'bg-green-100 text-green-800'
+                                        ? 'bg-purple-100 text-purple-800'
+                                        : 'bg-green-100 text-green-800'
                                         }`}>
                                         {user.role || 'user'}
                                     </span>
@@ -171,6 +172,7 @@ function DatabaseManagement() {
     const [loadingLive, setLoadingLive] = useState(false);
     const [loadingTrain, setLoadingTrain] = useState(false);
     const [lastSaved, setLastSaved] = useState<string | null>(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
     useEffect(() => {
         loadSavedDDL();
@@ -204,18 +206,25 @@ function DatabaseManagement() {
         setTrainingDDL(liveDDL);
     };
 
-    const handleTrain = async () => {
+    const handleTrainClick = () => {
         if (!trainingDDL.trim()) return;
-        if (!confirm('Bu işlem veritabanı şemasını güncelleyecek ve AI modelini yeniden eğitecektir. Devam etmek istiyor musunuz?')) return;
+        setIsConfirmModalOpen(true);
+    };
 
+    const confirmTrain = async () => {
+        console.log('confirmTrain called');
+        console.log('trainingDDL length:', trainingDDL.length);
+        setIsConfirmModalOpen(false);
         setLoadingTrain(true);
         try {
+            console.log('Calling apiClient.trainDDL...');
             await apiClient.trainDDL(trainingDDL);
+            console.log('trainDDL succeeded');
             alert('Başarıyla kaydedildi ve eğitildi! Önbellek temizlendi.');
             setLastSaved(new Date().toLocaleString('tr-TR'));
         } catch (error) {
+            console.error('trainDDL error:', error);
             alert('Eğitim sırasında bir hata oluştu.');
-            console.error(error);
         } finally {
             setLoadingTrain(false);
         }
@@ -275,11 +284,11 @@ function DatabaseManagement() {
                             <Button
                                 variant="primary"
                                 size="sm"
-                                onClick={handleTrain}
+                                onClick={handleTrainClick}
                                 disabled={loadingTrain || !trainingDDL}
                                 className="text-xs"
                             >
-                                {loadingTrain ? 'İşleniyor...' : '💾 Kaydet ve Eğit'}
+                                {loadingTrain ? 'İşleniyor...' : '💾 Kaydet ve Eğit (YENİ)'}
                             </Button>
                         </div>
                     </div>
@@ -297,6 +306,56 @@ function DatabaseManagement() {
                     </div>
                 </div>
             </div>
+
+            <Modal
+                isOpen={isConfirmModalOpen}
+                onClose={() => setIsConfirmModalOpen(false)}
+                title=""
+                size="sm"
+            >
+                <div className="text-center space-y-6">
+                    {/* Icon */}
+                    <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+                        <span className="text-3xl">🚀</span>
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="text-xl font-bold text-white">
+                        AI Modelini Eğit
+                    </h3>
+
+                    {/* Description */}
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                        Bu işlem veritabanı şemasını güncelleyecek ve AI modelini yeniden eğitecektir.
+                    </p>
+
+                    {/* Warning Box */}
+                    <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl">
+                        <div className="flex items-center gap-2 justify-center">
+                            <span className="text-amber-400">⚠️</span>
+                            <p className="text-amber-300 text-xs font-medium">
+                                Bu işlem geri alınamaz
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            onClick={() => setIsConfirmModalOpen(false)}
+                            className="flex-1 px-4 py-3 rounded-xl border border-gray-600 text-gray-300 font-medium hover:bg-gray-700 hover:text-white transition-all duration-200"
+                        >
+                            İptal
+                        </button>
+                        <button
+                            onClick={confirmTrain}
+                            className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg shadow-purple-500/25"
+                        >
+                            Onayla ve Eğit
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

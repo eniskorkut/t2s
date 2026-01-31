@@ -220,7 +220,7 @@ export class ApiClient implements IApiClient {
     // Increase timeout for training
     const longTimeoutClient = new HttpClient(
       configManager.getApiBaseUrl(),
-      60000 // 60 seconds
+      300000 // 300 seconds (5 minutes)
     );
     return longTimeoutClient.post<{ success: boolean; message: string }>('/api/admin/train', { ddl });
   }
