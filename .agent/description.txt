@@ -1,0 +1,98 @@
+================================================================================
+ANTIGRAVITY AGENT MANIFEST - t2s PROJECT (Text-to-SQL)
+================================================================================
+Bu dosya, projedeki aktif yapay zeka ajanlarının görev tanımlarını içerir.
+Proje Kapsamı: Vanna AI (RAG), FastAPI (Backend), Next.js (Frontend), PostgreSQL.
+================================================================================
+
+[BEYİN TAKIMI & MANTIK]
+--------------------------------------------------------------------------------
+1. @ai-engineer (Yapay Zeka Mühendisi)
+   - Görevi: Vanna AI modelini eğitmek (DDL, Docs), RAG sistemini yönetmek.
+   - Odak: Modelin doğru SQL üretmesi ve halüsinasyon görmemesi.
+   - Kullanım: "Model tabloyu yanlış biliyor", "Vanna'yı eğit", "Prompt'u düzelt".
+
+2. @backend-specialist (Backend Uzmanı)
+   - Görevi: FastAPI ile asenkron (async) API endpoint'leri geliştirmek.
+   - Odak: Python tarafındaki iş mantığı (Service layer) ve API performansı.
+   - Kullanım: "Yeni API rotası ekle", "Veri formatını JSON yap", "Logic kur".
+
+3. @database-architect (Veri Tabanı Mimarı)
+   - Görevi: PostgreSQL şemasını tasarlamak, tabloları ve ilişkileri kurmak.
+   - Odak: Veri bütünlüğü, normalizasyon ve SQL optimizasyonu.
+   - Kullanım: "Yeni tablo ekle", "İlişkileri düzenle", "SQL şemasını ver".
+
+[ARAYÜZ & KULLANICI DENEYİMİ]
+--------------------------------------------------------------------------------
+4. @frontend-specialist (Frontend Uzmanı)
+   - Görevi: Next.js (App Router) ile kullanıcı arayüzünü kodlamak.
+   - Odak: Chat ekranı, veri tabloları, grafikler ve React bileşenleri.
+   - Kullanım: "Sohbet ekranını yap", "Buton rengini değiştir", "Sayfa ekle".
+
+5. @mobile-responsive (Mobil Uyum Uzmanı)
+   - Görevi: Arayüzün telefon ve tabletlerde düzgün görünmesini sağlamak.
+   - Odak: Tailwind CSS responsive ayarları (sm:, md:, lg:).
+   - Kullanım: "Telefonda tablo taşıyor", "Mobilde menü görünmüyor".
+
+[GÜVENLİK & TEST (SAVUNMA)]
+--------------------------------------------------------------------------------
+6. @security-auditor (Güvenlik Denetçisi - Defans)
+   - Görevi: Kodu savunma amaçlı taramak ve güvenlik açıklarını kapatmak.
+   - Odak: OWASP kuralları, hassas veri sızıntısı, güvenli konfigürasyon.
+   - Kullanım: "Güvenlik açığı var mı?", "API keyler güvende mi?".
+
+7. @penetration-tester (Sızma Testi Uzmanı - Ofans)
+   - Görevi: Sisteme saldırı simülasyonu yapmak (LLM Red Teaming).
+   - Odak: Prompt Injection, Jailbreaking, SQL Exfiltration denemeleri.
+   - Kullanım: "Sistemi kandırmayı dene", "Vanna'ya yasak sorgu yazdır".
+
+8. @qa-engineer (Test Mühendisi - Kod)
+   - Görevi: Backend ve Vanna fonksiyonları için birim testler (Unit Test) yazmak.
+   - Odak: Pytest ile kodun mantığını doğrulamak.
+   - Kullanım: "Bu fonksiyon için test yaz", "SQL üretimini test et".
+
+9. @qa-automation-engineer (Otomasyon Testçisi - UI)
+   - Görevi: Kullanıcı senaryolarını tarayıcıda test etmek (E2E).
+   - Odak: Playwright ile "Giriş yap -> Soru sor -> Cevap al" akışını denemek.
+   - Kullanım: "Tarayıcı test senaryosu yaz", "Buton çalışıyor mu test et".
+
+10. @test-engineer (Genel Testçi)
+    - Görevi: Genel test stratejileri ve kapsam raporları.
+    - Not: Genelde @qa-engineer ile örtüşür, destekleyici roldedir.
+
+[OPERASYON & YÖNETİM]
+--------------------------------------------------------------------------------
+11. @orchestrator (Orkestra Şefi / Proje Yöneticisi)
+    - Görevi: Karmaşık ve çoklu ajan gerektiren işleri planlayıp yönetmek.
+    - Odak: Görev dağıtımı, planlama ve sonuçları birleştirme.
+    - Kullanım: "Bana sıfırdan Admin Paneli kur (Front+Back+DB)".
+
+12. @devops-engineer (DevOps Mühendisi)
+    - Görevi: Uygulamayı sunucuya veya konteynera (Docker) hazırlamak.
+    - Odak: Dockerfile, Docker Compose, CI/CD pipeline, Deployment.
+    - Kullanım: "Docker ayarlarını yap", "Sunucuya deploy et".
+
+13. @debugger (Hata Çözücü)
+    - Görevi: Sistem çöktüğünde logları okuyup kök nedeni bulmak.
+    - Odak: Stack trace analizi, hata ayıklama.
+    - Kullanım: "Sistem 500 hatası veriyor", "Loglara bak sorun ne?".
+
+14. @explorer-agent (Kaşif / Haritacı)
+    - Görevi: Proje dosya yapısını ve veri akışını haritalamak.
+    - Odak: "Hangi dosya nerede?", "Bu fonksiyon nereyi çağırıyor?".
+    - Kullanım: "Proje yapısını anlat", "Veri akış şemasını çıkar".
+
+15. @code-archaeologist (Kod Arkeologu)
+    - Görevi: Eski, karmaşık veya belgesiz kodları analiz edip açıklamak.
+    - Odak: Tersine mühendislik, legacy kod analizi.
+    - Kullanım: "Bu hazır kütüphane ne işe yarıyor?", "Bu karışık kod ne yapar?".
+
+16. @performance-optimizer (Performans Uzmanı)
+    - Görevi: Yavaş çalışan SQL veya Python kodlarını hızlandırmak.
+    - Odak: Sorgu hızı, bellek kullanımı, sayfa yükleme süresi.
+    - Kullanım: "Sorgu çok yavaş", "Sistem kasıyor".
+
+17. @documentation-writer (Dokümantasyon Yazarı)
+    - Görevi: Teknik doküman, README ve kullanım kılavuzu yazmak.
+    - Odak: Anlaşılır metinler oluşturmak.
+    - Kullanım: "Kurulum rehberi hazırla", "API dokümanı yaz".

@@ -1,288 +1,180 @@
-# Antigravity Kit Architecture
+# Antigravity Architecture: t2s Project
 
-> Comprehensive AI Agent Capability Expansion Toolkit
-
----
-
-## 📋 Overview
-
-Antigravity Kit is a modular system consisting of:
-
-- **20 Specialist Agents** - Role-based AI personas
-- **36 Skills** - Domain-specific knowledge modules
-- **11 Workflows** - Slash command procedures
+> **System Identity:** High-Performance Text-to-SQL RAG System
+> **Core Stack:** Vanna AI (Python) | FastAPI (Async) | Next.js (App Router) | PostgreSQL
 
 ---
 
-## 🏗️ Directory Structure
+## 📖 1. Architectural Vision & Philosophy
+
+This document serves as the **cognitive blueprint** for the AI Agents working on the `t2s` project. Unlike standard web applications, this project relies heavily on **Retrieval-Augmented Generation (RAG)** to convert natural language into accurate SQL queries.
+
+### Core Principles
+1.  **Accuracy First:** The primary metric of success is the validity of the generated SQL. Hallucinations are considered critical failures.
+2.  **Async by Design:** Since LLM generation is I/O bound and slow, the entire backend architecture is non-blocking (Asynchronous).
+3.  **Strict Separation:** Business logic, AI interaction, and API routing are strictly separated using the Service-Repository pattern.
+4.  **Defensive Generation:** We assume the LLM can be tricked (Prompt Injection); therefore, validation layers exist before any SQL execution.
+
+---
+
+## 🏗️ 2. System Anatomy (Directory Structure)
+
+The codebase is organized to support modular AI interactions and scalable development.
 
 ```plaintext
 .agent/
-├── ARCHITECTURE.md          # This file
-├── agents/                  # 20 Specialist Agents
-├── skills/                  # 36 Skills
-├── workflows/               # 11 Slash Commands
-├── rules/                   # Global Rules
-└── scripts/                 # Master Validation Scripts
+├── ARCHITECTURE.md          # The Source of Truth (This file)
+├── agents/                  # The "Special Forces" Team (14 Active Roles)
+├── skills/                  # The Technical Knowledge Base
+│   ├── vanna-rag/           # [CRITICAL] Vanna AI Training & Usage SOPs
+│   ├── fastapi-expert/      # [CRITICAL] Async Backend Standards
+│   ├── nextjs-react-expert/ # Frontend & UI Components
+│   ├── database-design/     # SQL Schema & Normalization
+│   └── ...                  # Supporting skills (Docker, Git, Security)
+├── workflows/               # Automated Procedure Definitions
+└── scripts/                 # Validation & Health Check Scripts
+
 ```
 
 ---
 
-## 🤖 Agents (20)
+## 🤖 3. The Agent Roster (Roles & Responsibilities)
 
-Specialist AI personas for different domains.
+We utilize a "Special Forces" model where each agent has a strict domain of authority. Agents must **not** cross these boundaries without coordination from the Orchestrator.
 
-| Agent                    | Focus                      | Skills Used                                              |
-| ------------------------ | -------------------------- | -------------------------------------------------------- |
-| `orchestrator`           | Multi-agent coordination   | parallel-agents, behavioral-modes                        |
-| `project-planner`        | Discovery, task planning   | brainstorming, plan-writing, architecture                |
-| `frontend-specialist`    | Web UI/UX                  | frontend-design, react-best-practices, tailwind-patterns |
-| `backend-specialist`     | API, business logic        | api-patterns, nodejs-best-practices, database-design     |
-| `database-architect`     | Schema, SQL                | database-design, prisma-expert                           |
-| `mobile-developer`       | iOS, Android, RN           | mobile-design                                            |
-| `game-developer`         | Game logic, mechanics      | game-development                                         |
-| `devops-engineer`        | CI/CD, Docker              | deployment-procedures, docker-expert                     |
-| `security-auditor`       | Security compliance        | vulnerability-scanner, red-team-tactics                  |
-| `penetration-tester`     | Offensive security         | red-team-tactics                                         |
-| `test-engineer`          | Testing strategies         | testing-patterns, tdd-workflow, webapp-testing           |
-| `debugger`               | Root cause analysis        | systematic-debugging                                     |
-| `performance-optimizer`  | Speed, Web Vitals          | performance-profiling                                    |
-| `seo-specialist`         | Ranking, visibility        | seo-fundamentals, geo-fundamentals                       |
-| `documentation-writer`   | Manuals, docs              | documentation-templates                                  |
-| `product-manager`        | Requirements, user stories | plan-writing, brainstorming                              |
-| `product-owner`          | Strategy, backlog, MVP     | plan-writing, brainstorming                              |
-| `qa-automation-engineer` | E2E testing, CI pipelines  | webapp-testing, testing-patterns                         |
-| `code-archaeologist`     | Legacy code, refactoring   | clean-code, code-review-checklist                        |
-| `explorer-agent`         | Codebase analysis          | -                                                        |
+### 🧠 Group A: The Core Brain (Logic & AI)
 
----
+| Agent | Role Description | Primary Directive |
+| --- | --- | --- |
+| **`ai-engineer`** | **Guardian of the RAG Pipeline.** Manages Vanna training data (DDL, Docs), optimizes prompts, and minimizes hallucinations. | *"Ensure the model knows the schema better than the user."* |
+| **`backend-specialist`** | **API Architect.** Builds high-performance FastAPI endpoints. Handles Request/Response lifecycles and strictly implements the `fastapi-expert` skill. | *"Never block the Event Loop."* |
+| **`database-architect`** | **Data Sovereign.** Designs efficient PostgreSQL schemas, manages migrations, and ensures query performance (Indexing). | *"Data integrity is non-negotiable."* |
 
-## 🧩 Skills (36)
+### 🎨 Group B: The Interface (Frontend & Mobile)
 
-Modular knowledge domains that agents can load on-demand. based on task context.
+| Agent | Role Description | Primary Directive |
+| --- | --- | --- |
+| **`frontend-specialist`** | **UI Builder.** Develops Next.js (App Router) pages, React components, and handles client-side state management. | *"Make complex data look simple."* |
+| **`mobile-responsive`** | **UX Guardian.** Ensures the chat interface and data tables render perfectly on mobile viewports using Tailwind CSS. | *"Mobile is not an afterthought."* |
 
-### Frontend & UI
+### 🛡️ Group C: Quality & Security (Defense)
 
-| Skill                   | Description                                                           |
-| ----------------------- | --------------------------------------------------------------------- |
-| `react-best-practices`  | React & Next.js performance optimization (Vercel - 57 rules)          |
-| `web-design-guidelines` | Web UI audit - 100+ rules for accessibility, UX, performance (Vercel) |
-| `tailwind-patterns`     | Tailwind CSS v4 utilities                                             |
-| `frontend-design`       | UI/UX patterns, design systems                                        |
-| `ui-ux-pro-max`         | 50 styles, 21 palettes, 50 fonts                                      |
+| Agent | Role Description | Primary Directive |
+| --- | --- | --- |
+| **`security-auditor`** | **The Shield.** Reviews code for vulnerabilities (OWASP), secure configurations, and sensitive data exposure. | *"Trust no input."* |
+| **`penetration-tester`** | **The Sword.** Actively attempts to break the system using Prompt Injection, Jailbreaking, and SQL Exfiltration tactics. | *"Think like the adversary."* |
+| **`qa-engineer`** | **Code Verifier.** Writes Pytest (Unit/Integration) scripts to verify backend logic and SQL generation accuracy. | *"If it's not tested, it doesn't work."* |
+| **`qa-automation-engineer`** | **Flow Verifier.** Uses Playwright for End-to-End (E2E) testing of the user journey (Login -> Chat -> Result). | *"Simulate the real user."* |
 
-### Backend & API
+### ⚙️ Group D: Operations & Management
 
-| Skill                   | Description                    |
-| ----------------------- | ------------------------------ |
-| `api-patterns`          | REST, GraphQL, tRPC            |
-| `nestjs-expert`         | NestJS modules, DI, decorators |
-| `nodejs-best-practices` | Node.js async, modules         |
-| `python-patterns`       | Python standards, FastAPI      |
-
-### Database
-
-| Skill             | Description                 |
-| ----------------- | --------------------------- |
-| `database-design` | Schema design, optimization |
-| `prisma-expert`   | Prisma ORM, migrations      |
-
-### TypeScript/JavaScript
-
-| Skill               | Description                         |
-| ------------------- | ----------------------------------- |
-| `typescript-expert` | Type-level programming, performance |
-
-### Cloud & Infrastructure
-
-| Skill                   | Description               |
-| ----------------------- | ------------------------- |
-| `docker-expert`         | Containerization, Compose |
-| `deployment-procedures` | CI/CD, deploy workflows   |
-| `server-management`     | Infrastructure management |
-
-### Testing & Quality
-
-| Skill                   | Description              |
-| ----------------------- | ------------------------ |
-| `testing-patterns`      | Jest, Vitest, strategies |
-| `webapp-testing`        | E2E, Playwright          |
-| `tdd-workflow`          | Test-driven development  |
-| `code-review-checklist` | Code review standards    |
-| `lint-and-validate`     | Linting, validation      |
-
-### Security
-
-| Skill                   | Description              |
-| ----------------------- | ------------------------ |
-| `vulnerability-scanner` | Security auditing, OWASP |
-| `red-team-tactics`      | Offensive security       |
-
-### Architecture & Planning
-
-| Skill           | Description                |
-| --------------- | -------------------------- |
-| `app-builder`   | Full-stack app scaffolding |
-| `architecture`  | System design patterns     |
-| `plan-writing`  | Task planning, breakdown   |
-| `brainstorming` | Socratic questioning       |
-
-### Mobile
-
-| Skill           | Description           |
-| --------------- | --------------------- |
-| `mobile-design` | Mobile UI/UX patterns |
-
-### Game Development
-
-| Skill              | Description           |
-| ------------------ | --------------------- |
-| `game-development` | Game logic, mechanics |
-
-### SEO & Growth
-
-| Skill              | Description                   |
-| ------------------ | ----------------------------- |
-| `seo-fundamentals` | SEO, E-E-A-T, Core Web Vitals |
-| `geo-fundamentals` | GenAI optimization            |
-
-### Shell/CLI
-
-| Skill                | Description               |
-| -------------------- | ------------------------- |
-| `bash-linux`         | Linux commands, scripting |
-| `powershell-windows` | Windows PowerShell        |
-
-### Other
-
-| Skill                     | Description               |
-| ------------------------- | ------------------------- |
-| `clean-code`              | Coding standards (Global) |
-| `behavioral-modes`        | Agent personas            |
-| `parallel-agents`         | Multi-agent patterns      |
-| `mcp-builder`             | Model Context Protocol    |
-| `documentation-templates` | Doc formats               |
-| `i18n-localization`       | Internationalization      |
-| `performance-profiling`   | Web Vitals, optimization  |
-| `systematic-debugging`    | Troubleshooting           |
+| Agent | Role Description | Primary Directive |
+| --- | --- | --- |
+| **`orchestrator`** | **The Conductor.** Decomposes complex tasks, assigns them to specialists, and synthesizes the results. | *"Keep the team synchronized."* |
+| **`devops-engineer`** | **Infrastructure Manager.** Manages Docker containers, `docker-compose.yml`, and deployment pipelines. | *"It works on every machine, not just mine."* |
+| **`debugger`** | **Investigator.** Analyzes logs, stack traces, and error messages to find the Root Cause of failures. | *"Find the truth in the logs."* |
+| **`explorer-agent`** | **The Cartographer.** Maps the codebase structure and dependencies for other agents. | *"Know the terrain."* |
 
 ---
 
-## 🔄 Workflows (11)
+## 🧩 4. Critical Skills (The Knowledge Base)
 
-Slash command procedures. Invoke with `/command`.
+Agents are only as good as their instructions. We use custom "Skill" modules to enforce project standards.
 
-| Command          | Description              |
-| ---------------- | ------------------------ |
-| `/brainstorm`    | Socratic discovery       |
-| `/create`        | Create new features      |
-| `/debug`         | Debug issues             |
-| `/deploy`        | Deploy application       |
-| `/enhance`       | Improve existing code    |
-| `/orchestrate`   | Multi-agent coordination |
-| `/plan`          | Task breakdown           |
-| `/preview`       | Preview changes          |
-| `/status`        | Check project status     |
-| `/test`          | Run tests                |
-| `/ui-ux-pro-max` | Design with 50 styles    |
+### 🔥 Project-Specific Skills (High Priority)
+
+#### **1. `vanna-rag**` (AI Engineering)
+
+* **Purpose:** Standardizes interactions with the Vanna framework.
+* **Key Rules:**
+* **Training:** Priority is DDL -> Documentation -> Golden SQL.
+* **Execution:** Never use `vn.ask()` in API; use `generate_sql()` -> `run_sql()`.
+* **Safety:** Always validate generated SQL for destructive commands (`DROP`, `DELETE`).
+
+
+
+#### **2. `fastapi-expert**` (Backend Engineering)
+
+* **Purpose:** Enforces modern Python/FastAPI best practices.
+* **Key Rules:**
+* **Architecture:** Logic belongs in `services/`, not `routes/`.
+* **Type Safety:** All inputs/outputs must be Pydantic v2 models.
+* **Async:** All I/O operations must be `await`ed.
+
+
+
+### 🔧 Core Technical Skills
+
+* **`nextjs-react-expert`:** Server vs. Client components, Hooks, Next.js Image optimization.
+* **`database-design`:** 3rd Normal Form, Foreign Key constraints, Indexing strategies.
+* **`red-team-tactics`:** Knowledge of adversarial attacks on LLMs (Prompt Injection).
+* **`docker-expert`:** Multi-stage builds, clean container environments.
 
 ---
 
-## 🎯 Skill Loading Protocol
+## 🔄 5. Workflows & Command Protocol
 
-```plaintext
-User Request → Skill Description Match → Load SKILL.md
-                                            ↓
-                                    Read references/
-                                            ↓
-                                    Read scripts/
+Standardized procedures for common development tasks.
+
+| Command | Workflow Description | Agents Involved |
+| --- | --- | --- |
+| **`/orchestrate`** | **Complex Feature Implementation.**<br>
+
+<br>1. Explorer maps the area.<br>
+
+<br>2. Architect plans the structure.<br>
+
+<br>3. Specialists implement code.<br>
+
+<br>4. QA verifies. | All |
+| **`/plan`** | **Task Decomposition.**<br>
+
+<br>Creates a step-by-step `PLAN.md` for a requested feature, identifying risks and requirements. | `orchestrator`, `explorer-agent` |
+| **`/debug`** | **Incident Response.**<br>
+
+<br>1. Reads logs.<br>
+
+<br>2. Traces error flow.<br>
+
+<br>3. Identifies root cause.<br>
+
+<br>4. Suggests fix. | `debugger`, `backend-specialist` |
+| **`/security-scan`** | **Vulnerability Assessment.**<br>
+
+<br>Audits the codebase and `vanna_config.py` for security holes and prompt leakage risks. | `security-auditor`, `penetration-tester` |
+| **`/train-vanna`** | **Knowledge Update.**<br>
+
+<br>Updates the vector store with new DDL schemas or documentation. | `ai-engineer` |
+
+---
+
+## 🔗 6. Integration Points & Data Flow
+
+### The "Question to Answer" Flow
+
+1. **Frontend:** User sends question -> `POST /api/chat`
+2. **Backend (Route):** Validates request (Pydantic) -> Calls Service.
+3. **Backend (Service):**
+* Checks Cache (Redis/Memory).
+* Calls **Vanna AI** (`generate_sql`).
+* **Security Check:** Scans SQL for malicious intent.
+* Executes SQL (`run_sql`).
+
+
+4. **Database:** Returns raw rows.
+5. **Backend (Service):** Formats data (JSON/Plotly).
+6. **Frontend:** Renders Table/Chart.
+
+---
+
+## 📊 7. Project Metrics
+
+| Metric | Current Status |
+| --- | --- |
+| **Tech Stack** | Modern (2025 Standards) |
+| **Agent Count** | 14 Specialized Roles |
+| **Custom Skills** | 2 (`vanna-rag`, `fastapi-expert`) |
+| **Primary Risk** | LLM Hallucination & Prompt Injection |
+
 ```
 
-### Skill Structure
-
-```plaintext
-skill-name/
-├── SKILL.md           # (Required) Metadata & instructions
-├── scripts/           # (Optional) Python/Bash scripts
-├── references/        # (Optional) Templates, docs
-└── assets/            # (Optional) Images, logos
-```
-
-### Enhanced Skills (with scripts/references)
-
-| Skill               | Files | Coverage                            |
-| ------------------- | ----- | ----------------------------------- |
-| `ui-ux-pro-max`     | 27    | 50 styles, 21 palettes, 50 fonts    |
-| `app-builder`       | 20    | Full-stack scaffolding              |
-
----
-
-## � Scripts (2)
-
-Master validation scripts that orchestrate skill-level scripts.
-
-### Master Scripts
-
-| Script          | Purpose                                 | When to Use              |
-| --------------- | --------------------------------------- | ------------------------ |
-| `checklist.py`  | Priority-based validation (Core checks) | Development, pre-commit  |
-| `verify_all.py` | Comprehensive verification (All checks) | Pre-deployment, releases |
-
-### Usage
-
-```bash
-# Quick validation during development
-python .agent/scripts/checklist.py .
-
-# Full verification before deployment
-python .agent/scripts/verify_all.py . --url http://localhost:3000
-```
-
-### What They Check
-
-**checklist.py** (Core checks):
-
-- Security (vulnerabilities, secrets)
-- Code Quality (lint, types)
-- Schema Validation
-- Test Suite
-- UX Audit
-- SEO Check
-
-**verify_all.py** (Full suite):
-
-- Everything in checklist.py PLUS:
-- Lighthouse (Core Web Vitals)
-- Playwright E2E
-- Bundle Analysis
-- Mobile Audit
-- i18n Check
-
-For details, see [scripts/README.md](scripts/README.md)
-
----
-
-## 📊 Statistics
-
-| Metric              | Value                         |
-| ------------------- | ----------------------------- |
-| **Total Agents**    | 20                            |
-| **Total Skills**    | 36                            |
-| **Total Workflows** | 11                            |
-| **Total Scripts**   | 2 (master) + 18 (skill-level) |
-| **Coverage**        | ~90% web/mobile development   |
-
----
-
-## 🔗 Quick Reference
-
-| Need     | Agent                 | Skills                                |
-| -------- | --------------------- | ------------------------------------- |
-| Web App  | `frontend-specialist` | react-best-practices, frontend-design |
-| API      | `backend-specialist`  | api-patterns, nodejs-best-practices   |
-| Mobile   | `mobile-developer`    | mobile-design                         |
-| Database | `database-architect`  | database-design, prisma-expert        |
-| Security | `security-auditor`    | vulnerability-scanner                 |
-| Testing  | `test-engineer`       | testing-patterns, webapp-testing      |
-| Debug    | `debugger`            | systematic-debugging                  |
-| Plan     | `project-planner`     | brainstorming, plan-writing           |
