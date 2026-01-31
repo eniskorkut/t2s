@@ -4,9 +4,15 @@ SOLID: Single Responsibility Principle
 """
 import sqlite3
 import bcrypt
+from datetime import datetime, timedelta
 from typing import Optional, Dict
+from jose import jwt
 from .database_service import DatabaseService
 
+# Configuration
+SECRET_KEY = "vanna-t2s-secure-secret-key-change-in-production"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 day
 
 class AuthService:
     """Service for handling authentication operations."""
@@ -148,3 +154,24 @@ class AuthService:
         )
         
         return row_count > 0
+
+    def create_access_token(self, data: dict, expires_delta: Optional[timedelta] = None) -> str:
+        """
+        Create a new access token.
+        
+        Args:
+            data: Data to encode in token (payload)
+            expires_delta: Expiration time delta
+            
+        Returns:
+            Encoded JWT token
+        """
+        to_encode = data.copy()
+        if expires_delta:
+            expire = datetime.utcnow() + expires_delta
+        else:
+            expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            
+        to_encode.update({"exp": expire})
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        return encoded_jwt

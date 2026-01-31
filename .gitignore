@@ -1,2 +1,50 @@
-node_modules
+# --- General ---
 .DS_Store
+.vscode/
+.idea/
+*.log
+
+# --- Security & Secrets (CRITICAL) ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+vanna-main-backend/.env
+vanna-main-frontend/.env.local
+auth_token.txt
+*.pem
+*.key
+
+# --- Python / FastAPI (Backend) ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+vanna-main-backend/src/vanna_backup/
+
+# --- Node.js / Next.js (Frontend) ---
+node_modules/
+.next/
+out/
+build/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.vercel/
+
+# --- Vanna AI Specific ---
+# Vanna'nın oluşturduğu geçici vektör dosyaları veya cacheler
+*.chroma/
+vanna_cache/
+training_data.json

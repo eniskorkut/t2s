@@ -7,6 +7,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { apiClient } from '@/lib/api/HttpClient';
 import { useAuth } from '@/context/AuthContext';
 
 export interface RegisterModalProps {
@@ -22,7 +23,7 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, asModal = fals
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { register } = useAuth();
+  // const { register } = useAuth(); // Register not in context
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,12 +37,22 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, asModal = fals
     setIsLoading(true);
 
     try {
-      await register(email, password);
+      const res = await apiClient.post<any>('/api/register', {
+        email,
+        password,
+      });
+
+      if (!res) {
+        throw new Error("Kayıt başarısız.");
+      }
+
       onClose();
+      onSwitchToLogin();
       setEmail('');
       setPassword('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kayıt başarısız');
+      alert("Kayıt başarılı! Lütfen giriş yapın.");
+    } catch (err: any) {
+      setError(err.message || 'Kayıt başarısız');
     } finally {
       setIsLoading(false);
     }
@@ -50,11 +61,11 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin, asModal = fals
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className={`fixed inset-0 z-50 ${asModal ? 'bg-black/50' : 'bg-white'} flex items-center justify-center`}
       onClick={asModal ? onClose : undefined}
     >
-      <div 
+      <div
         className={`w-full max-w-md ${asModal ? 'bg-white rounded-xl shadow-2xl p-6 mx-4' : 'px-6'}`}
         onClick={(e) => asModal && e.stopPropagation()}
       >

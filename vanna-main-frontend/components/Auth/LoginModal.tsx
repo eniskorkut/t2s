@@ -7,6 +7,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { apiClient } from '@/lib/api/HttpClient';
 import { useAuth } from '@/context/AuthContext';
 
 export interface LoginModalProps {
@@ -31,12 +32,28 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister, onSwitchToRese
     setIsLoading(true);
 
     try {
-      await login(email, password);
-      onClose();
-      setEmail('');
-      setPassword('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Giriş başarısız');
+      // Use ApiClient or fetch directly
+      const res = await apiClient.post<any>('/api/login', {
+        email,
+        password,
+      });
+
+      if (res.token) {
+        localStorage.setItem('token', res.token);
+        localStorage.setItem('role', res.role);
+        localStorage.setItem('email', email);
+        // The original code called login(data.access_token, data.role, email);
+        // The provided snippet replaces this with localStorage and window.location.reload().
+        // Assuming the user wants this new behavior.
+        // if (onSuccess) onSuccess(); // 'onSuccess' prop is not defined in LoginModalProps
+        onClose();
+        window.location.reload();
+      } else {
+        // If no token is returned but the request was successful, handle as an error
+        throw new Error(res.detail || 'Giriş başarısız.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Giriş başarısız');
     } finally {
       setIsLoading(false);
     }

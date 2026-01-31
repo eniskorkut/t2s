@@ -23,6 +23,11 @@ export class HttpClient implements IHttpClient {
     this.timeout = timeout;
   }
 
+  private getAuthHeaders(): HeadersInit {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -35,9 +40,10 @@ export class HttpClient implements IHttpClient {
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
-        credentials: 'include',
+        // credentials: 'include', // Removed for JWT
         headers: {
           'Content-Type': 'application/json',
+          ...this.getAuthHeaders(),
           ...options.headers,
         },
       });
@@ -45,6 +51,15 @@ export class HttpClient implements IHttpClient {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+        if (response.status === 401) {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+            localStorage.removeItem('email');
+            window.location.href = '/login';
+          }
+        }
+
         const errorData = await response.json().catch(() => ({
           error: response.statusText,
         }));
@@ -58,7 +73,7 @@ export class HttpClient implements IHttpClient {
       return response.json();
     } catch (error) {
       clearTimeout(timeoutId);
-      
+
       if (error instanceof ApiError) {
         throw error;
       }
@@ -103,3 +118,6 @@ export class HttpClient implements IHttpClient {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
 }
+
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+export const apiClient = new HttpClient(apiUrl);

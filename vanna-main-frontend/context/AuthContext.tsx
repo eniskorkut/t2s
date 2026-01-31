@@ -1,97 +1,75 @@
-/**
- * Authentication Context
- * Following Single Responsibility Principle - only handles authentication state
- * Following Dependency Inversion Principle - depends on IApiClient interface
- */
+"use client";
 
-'use client';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useRouter } from "next/navigation";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { IAuthApi } from '@/lib/types/api.types';
-import type { User } from '@/lib/types';
-import { apiClient } from '@/lib/api/ApiClient';
+interface User {
+  id?: number;
+  email: string;
+  role: string;
+}
 
-interface AuthContextValue {
+interface AuthContextType {
   user: User | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
+  token: string | null;
+  login: (token: string, role: string, email: string) => void;
+  logout: () => void;
+  isLoading: boolean;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthProviderProps {
-  children: React.ReactNode;
-  apiClient?: IAuthApi; // Dependency Injection for testing
-}
-
-export function AuthProvider({ children, apiClient: injectedApiClient }: AuthProviderProps) {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  
-  // Use injected API client or default singleton
-  const authApi: IAuthApi = injectedApiClient || apiClient;
-
-  const checkAuth = useCallback(async () => {
-    try {
-      const userData = await authApi.getCurrentUser();
-      setUser(userData);
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [authApi]);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    // Check localStorage on mount
+    const storedToken = localStorage.getItem("token");
+    const storedRole = localStorage.getItem("role");
+    const storedEmail = localStorage.getItem("email");
 
-  const login = useCallback(async (email: string, password: string) => {
-    const response = await authApi.login(email, password);
-    if (response.success && response.user) {
-      setUser(response.user);
-    } else {
-      throw new Error(response.error || 'Giriş başarısız');
+    if (storedToken && storedRole) {
+      setToken(storedToken);
+      setUser({ email: storedEmail || "", role: storedRole });
     }
-  }, [authApi]);
+    setIsLoading(false);
+  }, []);
 
-  const register = useCallback(async (email: string, password: string) => {
-    const response = await authApi.register(email, password);
-    if (response.success && response.user) {
-      setUser(response.user);
-    } else {
-      throw new Error(response.error || 'Kayıt başarısız');
-    }
-  }, [authApi]);
+  const login = (newToken: string, role: string, email: string) => {
+    localStorage.setItem("token", newToken);
+    localStorage.setItem("role", role);
+    localStorage.setItem("email", email);
 
-  const logout = useCallback(async () => {
-    await authApi.logout();
-    setUser(null);
-  }, [authApi]);
+    setToken(newToken);
+    setUser({ email, role });
 
-  const refreshUser = useCallback(async () => {
-    await checkAuth();
-  }, [checkAuth]);
-
-  const value: AuthContextValue = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    refreshUser,
+    // Refresh to apply auth state deeply or redirect
+    router.push("/");
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("email");
+    setToken(null);
+    setUser(null);
+    router.push("/login");
+  };
 
-export function useAuth(): AuthContextValue {
+  return (
+    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-}
+};

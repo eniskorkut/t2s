@@ -41,6 +41,10 @@ def get_vanna_instance(request: Request):
     return request.app.state.vanna_instance
 
 
+
+from services.auth_service import SECRET_KEY, ALGORITHM
+from jose import JWTError, jwt
+
 async def get_current_user(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
@@ -49,32 +53,42 @@ async def get_current_user(
 ) -> dict:
     """
     Get current authenticated user.
-    Uses cookie-based authentication for session management.
-    Following Single Responsibility Principle - Only handles user authentication
+    Uses JWT authentication from Bearer header.
     """
-    # Cookie-based auth - get user_id from cookie
-    user_id = request.cookies.get('user_id')
-    
-    if not user_id:
+    if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
         )
+        
+    token = credentials.credentials
     
     try:
-        user_id_int = int(user_id)
-        user = user_service.get_user_by_id(user_id_int)
-        if not user:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found"
+                detail="Invalid token payload",
+                headers={"WWW-Authenticate": "Bearer"},
             )
-        return user
-    except (ValueError, TypeError):
+    except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication"
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    user = user_service.get_user_by_id(int(user_id))
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    return user
 
 
 def require_admin(current_user: dict = Depends(get_current_user)):

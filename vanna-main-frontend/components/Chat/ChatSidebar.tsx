@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { User, ChatSession } from '@/lib/types';
 import { Button } from '@/components/UI/Button';
 import { apiClient } from '@/lib/api/ApiClient';
@@ -55,6 +56,7 @@ export default function ChatSidebar({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Load chat history initially
   useEffect(() => {
@@ -208,8 +210,8 @@ export default function ChatSidebar({
           <button
             onClick={() => onViewChange('chat')}
             className={`w-full px-4 py-2.5 text-sm font-medium text-left transition-colors ${view === 'chat'
-                ? 'bg-gray-100 text-black'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-black'
+              ? 'bg-gray-100 text-black'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-black'
               }`}
           >
             Sohbet
@@ -217,8 +219,8 @@ export default function ChatSidebar({
           <button
             onClick={() => onViewChange('queries')}
             className={`w-full px-4 py-2.5 text-sm font-medium text-left transition-colors border-t border-gray-200 ${view === 'queries'
-                ? 'bg-gray-100 text-black'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-black'
+              ? 'bg-gray-100 text-black'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-black'
               }`}
           >
             Kayıtlı Sorgular
@@ -342,6 +344,7 @@ export default function ChatSidebar({
                   <span>⚙️ Admin Paneli</span>
                 </Link>
               )}
+
               <button
                 onClick={() => {
                   setUserMenuOpen(false);
@@ -375,7 +378,7 @@ interface ChatListItemProps {
   onEdit: () => void;
   onPin: () => void;
   onDelete: () => void;
-  menuRef: React.RefObject<HTMLDivElement>;
+  menuRef: React.RefObject<HTMLDivElement | null>;
   isOptimistic?: boolean;
 }
 

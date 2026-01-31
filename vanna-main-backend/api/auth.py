@@ -5,49 +5,41 @@ Following Dependency Inversion Principle - Depends on service abstractions
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from models.schemas import LoginRequest, RegisterRequest, LoginResponse, UserResponse, ResetPasswordRequest
+from models.schemas import LoginRequest, RegisterRequest, LoginResponse, UserResponse, ResetPasswordRequest, Token
 from api.dependencies import get_auth_service, get_user_service, get_current_user
 from services import AuthService, UserService
 
 router = APIRouter()
 
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login", response_model=Token)
 async def login(
     login_data: LoginRequest,
     auth_service: AuthService = Depends(get_auth_service)
 ):
-    """Login endpoint."""
+    """
+    Login endpoint.
+    Returns JWT access token.
+    """
     user = auth_service.authenticate(login_data.email, login_data.password)
     
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Create response with user data
-    response = JSONResponse(
-        content=LoginResponse(
-            success=True,
-            user=UserResponse(
-                id=user['id'], 
-                email=user['email'],
-                role=user.get('role', 'user')
-            )
-        ).model_dump()
+    # Create access token
+    access_token = auth_service.create_access_token(
+        data={"sub": str(user['id']), "role": user['role']}
     )
     
-    # Set cookie for session management
-    response.set_cookie(
-        key="user_id",
-        value=str(user['id']),
-        httponly=True,
-        samesite="lax",
-        secure=False  # Set to True in production with HTTPS
-    )
-    
-    return response
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": user['role']
+    }
 
 
 @router.post("/register", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)

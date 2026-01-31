@@ -61,57 +61,14 @@ class SessionAuth(AuthInterface):
         # We don't need user-specific config overrides for now
         return config
     
+    
     def login_form(self):
         """
         Return login form HTML.
-        This is called when authentication is required.
-        
-        Returns:
-            HTML string for login form
+        Deprecated: Frontend handles login UI.
         """
-        return """
-        <div style="max-width: 400px; margin: 50px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-            <h2>Giriş Yapın</h2>
-            <form id="loginForm" onsubmit="handleLogin(event)">
-                <div style="margin-bottom: 15px;">
-                    <label>Email:</label>
-                    <input type="email" id="email" required style="width: 100%; padding: 8px; margin-top: 5px;">
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label>Şifre:</label>
-                    <input type="password" id="password" required style="width: 100%; padding: 8px; margin-top: 5px;">
-                </div>
-                <button type="submit" style="width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Giriş Yap
-                </button>
-            </form>
-            <p style="margin-top: 15px; text-align: center;">
-                Hesabınız yok mu? <a href="#" onclick="showRegister()">Kayıt Ol</a>
-            </p>
-            <script>
-                function handleLogin(e) {
-                    e.preventDefault();
-                    fetch('/api/login', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            email: document.getElementById('email').value,
-                            password: document.getElementById('password').value
-                        })
-                    }).then(r => r.json()).then(data => {
-                        if (data.success) {
-                            location.reload();
-                        } else {
-                            alert('Hata: ' + data.error);
-                        }
-                    });
-                }
-                function showRegister() {
-                    alert('Kayıt olmak için /api/register endpoint\'ini kullanın');
-                }
-            </script>
-        </div>
-        """
+        return "Login via Frontend"
+    
     
     def login_handler(self, request):
         """

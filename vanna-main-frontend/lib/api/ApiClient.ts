@@ -28,6 +28,11 @@ export class ApiClient implements IApiClient {
     );
   }
 
+  private getAuthHeaders(): HeadersInit {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  }
+
   // Authentication methods
   async login(email: string, password: string): Promise<LoginResponse> {
     return this.httpClient.post<LoginResponse>('/api/login', { email, password });
@@ -79,8 +84,9 @@ export class ApiClient implements IApiClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...this.getAuthHeaders(),
         },
-        credentials: 'include', // Session cookie'lerini gönder
+        // credentials: 'include', // Removed cookie-based credential
         body: JSON.stringify({ question, history, session_id: sessionId }),
       });
 
@@ -193,8 +199,9 @@ export class ApiClient implements IApiClient {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
       },
-      credentials: 'include', // Session cookie'lerini gönder
+      // credentials: 'include', // Removed cookie-based credential
       body: JSON.stringify({ question, history, stream }),
     });
   }

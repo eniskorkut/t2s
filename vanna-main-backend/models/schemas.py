@@ -6,6 +6,19 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 
 
+class Token(BaseModel):
+    """Token response model."""
+    access_token: str
+    token_type: str
+    role: str
+
+
+class TokenData(BaseModel):
+    """Token data model for JWT payload."""
+    username: Optional[str] = None
+    role: Optional[str] = None
+
+
 class LoginRequest(BaseModel):
     """Login request model."""
     email: EmailStr
