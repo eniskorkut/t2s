@@ -314,52 +314,70 @@ async def send_message(
                             # Son çare: raw response'u kullan
                             full_sql = raw_sql_response.strip()
                 
-                # SQL güvenlik kontrolü (sadece validate et, hata fırlatma)
-                try:
-                    QueryService.validate_sql_safety(full_sql)
-                except ValueError as ve:
-                    # Güvenlik hatası varsa, SQL'i temizle ve hata mesajı gönder
-                    yield f"data: {json.dumps({'type': 'error', 'error': str(ve)})}\n\n"
-                    yield "data: [DONE]\n\n"
-                    return
+                # Check if the response is actually SQL
+                is_sql = QueryService.is_likely_sql(full_sql)
                 
-                # Step 4: Finalize SQL
-                sql_explanation = QueryService.generate_sql_explanation(process_question, full_sql)
-                full_content = f"{sql_explanation}\n\n```sql\n{full_sql}\n```" if sql_explanation else f"```sql\n{full_sql}\n```"
-                
-                # Save SQL message
-                await chat_service.add_message(
-                    session_id=session_id,
-                    role='assistant',
-                    content=full_content,
-                    sql_query=full_sql
-                )
-                
-                yield f"data: {json.dumps({'type': 'metadata', 'explanation': sql_explanation, 'sql': full_sql})}\n\n"
-
-                # Step 5: Execute SQL
-                try:
-                    df = vn.run_sql(sql=full_sql)
-                    data = df.head(10).to_dict(orient="records")
-                    plotly_json = None
-                    if QueryService.should_generate_chart(df, full_sql):
-                        plotly_json = QueryService.generate_plotly_chart(df, full_sql)
+                if is_sql:
+                    # SQL güvenlik kontrolü (sadece validate et, hata fırlatma)
+                    try:
+                        QueryService.validate_sql_safety(full_sql)
+                    except ValueError as ve:
+                        # Güvenlik hatası varsa, SQL'i temizle ve hata mesajı gönder
+                        yield f"data: {json.dumps({'type': 'error', 'error': str(ve)})}\n\n"
+                        yield "data: [DONE]\n\n"
+                        return
                     
-                    # Save results message
+                    # Step 4: Finalize SQL
+                    sql_explanation = QueryService.generate_sql_explanation(process_question, full_sql)
+                    full_content = f"{sql_explanation}\n\n```sql\n{full_sql}\n```" if sql_explanation else f"```sql\n{full_sql}\n```"
+                    
+                    # Save SQL message
                     await chat_service.add_message(
                         session_id=session_id,
                         role='assistant',
-                        content="Sorgu sonuçları:",
-                        sql_query=full_sql,
-                        data=data,
-                        plotly_json=plotly_json
+                        content=full_content,
+                        sql_query=full_sql
                     )
                     
-                    yield f"data: {json.dumps({'type': 'result', 'data': data, 'plotly_json': plotly_json})}\n\n"
-                except Exception as e:
-                    friendly_error = QueryService.generate_friendly_error(vn, process_question, full_sql, str(e))
-                    await chat_service.add_message(session_id, 'assistant', friendly_error)
-                    yield f"data: {json.dumps({'type': 'error', 'error': friendly_error})}\n\n"
+                    yield f"data: {json.dumps({'type': 'metadata', 'explanation': sql_explanation, 'sql': full_sql})}\n\n"
+
+                    # Step 5: Execute SQL
+                    try:
+                        df = vn.run_sql(sql=full_sql)
+                        # ... (existing execution logic) ...
+                        data = df.head(10).to_dict(orient="records")
+                        plotly_json = None
+                        if QueryService.should_generate_chart(df, full_sql):
+                            plotly_json = QueryService.generate_plotly_chart(df, full_sql)
+                        
+                        # Save results message
+                        await chat_service.add_message(
+                            session_id=session_id,
+                            role='assistant',
+                            content="Sorgu sonuçları:",
+                            sql_query=full_sql,
+                            data=data,
+                            plotly_json=plotly_json
+                        )
+                        
+                        yield f"data: {json.dumps({'type': 'result', 'data': data, 'plotly_json': plotly_json})}\n\n"
+                    except Exception as e:
+                        friendly_error = QueryService.generate_friendly_error(vn, process_question, full_sql, str(e))
+                        await chat_service.add_message(session_id, 'assistant', friendly_error)
+                        yield f"data: {json.dumps({'type': 'error', 'error': friendly_error})}\n\n"
+
+                else:
+                    # Not SQL - likely a clarification or refusal
+                    # Send as plain text message
+                    await chat_service.add_message(
+                        session_id=session_id,
+                        role='assistant',
+                        content=full_sql  # This contains the text explanation
+                    )
+                    # Send metadata with empty SQL or specific type to frontend
+                    yield f"data: {json.dumps({'type': 'metadata', 'explanation': full_sql, 'sql': ''})}\n\n"
+                    yield "data: [DONE]\n\n"
+                    return
 
             except Exception as e:
                 yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
@@ -368,7 +386,7 @@ async def send_message(
             finally:
                 duration = time.monotonic() - start_time
                 print(f"[Perf] send_message stream session={session_id} user={user_id} duration={duration:.2f}s question=\"{question[:80]}\"")
-
+        
         return StreamingResponse(message_generator(), media_type="text/event-stream")
     else:
         try:

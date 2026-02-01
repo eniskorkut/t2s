@@ -56,8 +56,8 @@ export default function Message({ message, userQuestion, onSaveQuery, onSuggesti
   // Typewriter effect sadece yeni mesajlar için (3 saniyeden eski mesajlarda animasyon yok)
   const isNewMessage = useMemo(() => {
     if (!message.timestamp) return true; // Timestamp yoksa yeni kabul et
-    const messageTime = message.timestamp instanceof Date 
-      ? message.timestamp.getTime() 
+    const messageTime = message.timestamp instanceof Date
+      ? message.timestamp.getTime()
       : new Date(message.timestamp).getTime();
     const now = Date.now();
     const ageInSeconds = (now - messageTime) / 1000;
@@ -92,7 +92,7 @@ export default function Message({ message, userQuestion, onSaveQuery, onSuggesti
   const formatContent = (content: string): React.ReactNode => {
     // Simple markdown-like formatting
     const parts = content.split(/(```[\s\S]*?```|`[^`]+`)/g);
-    
+
     return parts.map((part, index) => {
       if (part.startsWith('```sql')) {
         const code = part.replace(/```sql\n?/g, '').replace(/```/g, '').trim();
@@ -128,25 +128,33 @@ export default function Message({ message, userQuestion, onSaveQuery, onSuggesti
 
   return (
     <div
-      className={`flex gap-6 max-w-4xl mx-auto ${
-        message.role === 'user' ? 'bg-white' : 'bg-gray-50'
-      }`}
+      className={`flex gap-6 max-w-4xl mx-auto ${message.role === 'user' ? 'bg-white' : 'bg-gray-50'
+        }`}
     >
       <div
-        className={`w-8 h-8 rounded flex items-center justify-center font-semibold flex-shrink-0 ${
-          message.role === 'user'
+        className={`w-8 h-8 rounded flex items-center justify-center font-semibold flex-shrink-0 ${message.role === 'user'
             ? 'bg-black text-white'
             : 'bg-gray-800 text-white'
-        }`}
+          }`}
       >
         {message.role === 'user' ? 'U' : 'AI'}
       </div>
       <div className="flex-1 pt-1">
-        <div className="whitespace-pre-wrap break-words text-black">
-          {formatContent(displayText)}
-          {isTyping && <span className="inline-block w-0.5 h-5 bg-black animate-pulse ml-0.5 align-middle"></span>}
+        <div className="whitespace-pre-wrap break-words text-black relative">
+          {message.from_cache && (
+            <div className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full mb-2 font-medium border border-blue-200">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+              </svg>
+              Önbellekten
+            </div>
+          )}
+          <div>
+            {formatContent(displayText)}
+            {isTyping && <span className="inline-block w-0.5 h-5 bg-black animate-pulse ml-0.5 align-middle"></span>}
+          </div>
         </div>
-        
+
         {/* Önerileri göster - Sadece typewriter tamamlandıktan sonra */}
         {!isTyping && message.suggestions && message.suggestions.length > 0 && onSuggestionClick && (
           <div className="mt-4 space-y-2">
@@ -164,7 +172,7 @@ export default function Message({ message, userQuestion, onSaveQuery, onSuggesti
             </div>
           </div>
         )}
-        
+
         {/* Data Toolbar - Toggle and Download buttons - Sadece typewriter tamamlandıktan sonra */}
         {!isTyping && hasData && (
           <div className="mt-3 mb-2 flex items-center justify-between bg-gray-100 p-2 rounded-lg border border-gray-300">
@@ -173,31 +181,29 @@ export default function Message({ message, userQuestion, onSaveQuery, onSuggesti
               <div className="flex items-center gap-1 bg-white rounded-md p-1 border border-gray-300">
                 <button
                   onClick={() => setViewMode('chart')}
-                  className={`px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-1.5 ${
-                    viewMode === 'chart'
+                  className={`px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-1.5 ${viewMode === 'chart'
                       ? 'bg-blue-500 text-white'
                       : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                    }`}
                 >
                   <ChartIcon />
                   <span>Grafik</span>
                 </button>
                 <button
                   onClick={() => setViewMode('table')}
-                  className={`px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-1.5 ${
-                    viewMode === 'table'
+                  className={`px-3 py-1.5 text-sm font-medium rounded transition-colors flex items-center gap-1.5 ${viewMode === 'table'
                       ? 'bg-blue-500 text-white'
                       : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                    }`}
                 >
                   <TableIcon />
                   <span>Tablo</span>
                 </button>
               </div>
             )}
-            
+
             {!showToggle && <div />}
-            
+
             {/* Right side - Download button */}
             <button
               onClick={handleDownloadCSV}
@@ -221,7 +227,7 @@ export default function Message({ message, userQuestion, onSaveQuery, onSuggesti
             </button>
           </div>
         )}
-        
+
         {/* Chart View - Sadece typewriter tamamlandıktan sonra */}
         {!isTyping && hasChart && viewMode === 'chart' && (
           <div className="mt-3 bg-white border border-gray-300 rounded-lg p-4">
@@ -242,7 +248,7 @@ export default function Message({ message, userQuestion, onSaveQuery, onSuggesti
             />
           </div>
         )}
-        
+
         {/* Table View - Sadece typewriter tamamlandıktan sonra */}
         {!isTyping && hasData && message.data && (!hasChart || viewMode === 'table') && (
           <div className="mt-3 overflow-x-auto">
@@ -285,7 +291,7 @@ export default function Message({ message, userQuestion, onSaveQuery, onSuggesti
             <span className="text-sm font-medium">Yapmak istediğiniz sorguya ait hiçbir veri bulunamadı.</span>
           </div>
         )}
-        
+
         {/* Save Query buttons - Sadece typewriter tamamlandıktan sonra */}
         {!isTyping && message.data && message.sql && onSaveQuery && userQuestion && (
           <div className="mt-4 flex gap-2">

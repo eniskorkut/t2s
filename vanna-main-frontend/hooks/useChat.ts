@@ -58,14 +58,14 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       // İlk mesaj mı kontrol et
       const isFirstMessage = messages.length === 0 && !sessionId;
       let currentActiveSessionId = sessionId;
-      
+
       // İlk mesajsa yeni session oluştur
       if (isFirstMessage) {
         // Geçici ID ve "New Chat" başlığı ile hemen başla
         const tempSessionId = `temp-${Date.now()}`;
         setSessionId(tempSessionId);
         setSessionTitle('New Chat');
-        
+
         try {
           const sessionResponse = await apiClient.createChatSession(text.trim());
           if (sessionResponse.success && sessionResponse.session_id) {
@@ -93,7 +93,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
       // Tek bir endpoint üzerinden her şeyi hallet
       const response = await apiClient.sendMessage(currentActiveSessionId, text.trim(), currentHistory, true);
-      
+
       if (!response.ok) {
         throw new Error('Mesaj gönderilemedi');
       }
@@ -119,10 +119,10 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           if (line.startsWith('data: ')) {
             const content = line.slice(6).trim();
             if (content === '[DONE]') break;
-            
+
             try {
               const data = JSON.parse(content);
-              
+
               if (data.token) {
                 sqlText += data.token;
                 setMessages((prev) => {
@@ -135,7 +135,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
                       sql: sqlText
                     }];
                   } else if (last && last.role === 'user') {
-                    assistantMessageCreated = false; 
+                    assistantMessageCreated = false;
                     return [...prev, {
                       role: 'assistant',
                       content: `\`\`\`sql\n${sqlText}\n\`\`\``,
@@ -148,18 +148,22 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
               } else if (data.type === 'metadata') {
                 const explanation = data.explanation;
                 currentFullSql = data.sql || sqlText;
+                const fromCache = data.from_cache;
+
                 setMessages((prev) => {
                   const last = prev[prev.length - 1];
                   if (last && last.role === 'assistant') {
                     return [...prev.slice(0, -1), {
                       ...last,
                       content: explanation ? `${explanation}\n\n\`\`\`sql\n${currentFullSql}\n\`\`\`` : `\`\`\`sql\n${currentFullSql}\n\`\`\``,
-                      sql: currentFullSql
+                      sql: currentFullSql,
+                      from_cache: fromCache
                     }];
                   }
                   return prev;
                 });
               } else if (data.type === 'result') {
+                const fromCache = data.from_cache;
                 setMessages((prev) => [
                   ...prev,
                   {
@@ -169,6 +173,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
                     plotly_json: data.plotly_json,
                     sql: currentFullSql || sqlText,
                     timestamp: new Date(),
+                    from_cache: fromCache
                   }
                 ]);
               } else if (data.type === 'error') {
@@ -215,10 +220,10 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const loadSession = useCallback(async (loadSessionId: string) => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await apiClient.getChatSession(loadSessionId);
-      
+
       if (response.success && response.messages) {
         setSessionId(loadSessionId);
         setSessionTitle(response.session.title);
@@ -239,7 +244,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
   const updateSessionTitle = useCallback(async (newTitle: string) => {
     if (!sessionId) return;
-    
+
     try {
       const response = await apiClient.updateChatTitle(sessionId, newTitle);
       if (response.success) {

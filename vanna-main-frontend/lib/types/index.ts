@@ -21,6 +21,7 @@ export interface Message {
   plotly_json?: any; // Plotly grafik verisi
   timestamp?: Date;
   suggestions?: string[]; // Öneriler için
+  from_cache?: boolean; // Semantic cache'den geldiyse true
 }
 
 // Query domain types

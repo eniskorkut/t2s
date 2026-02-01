@@ -5,6 +5,7 @@
 
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/context/AuthContext';
+import { Toaster } from 'react-hot-toast';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -23,7 +24,10 @@ export default function RootLayout({
   return (
     <html lang="tr">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <Toaster position="bottom-right" reverseOrder={false} />
+        </AuthProvider>
       </body>
     </html>
   );

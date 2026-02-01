@@ -3,15 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api/ApiClient';
 import type { User } from '@/lib/types';
 import { Button } from '@/components/UI/Button';
 import { Modal } from '@/components/UI/Modal';
-import { ChevronLeftIcon } from '@/components/UI/Icons';
+import {
+    ChevronLeftIcon, SearchIcon, DatabaseIcon, UserIcon,
+    ZapIcon, RefreshCwIcon, SaveIcon, AlertTriangleIcon
+} from '@/components/UI/Icons';
 
 export default function AdminPage() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<'users' | 'database'>('users');
+    const [activeTab, setActiveTab] = useState<'users' | 'database' | 'scanner'>('users');
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -42,6 +46,15 @@ export default function AdminPage() {
         );
     }
 
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'users': return <UserManagement />;
+            case 'database': return <DatabaseManagement />;
+            case 'scanner': return <DataScannerManagement />;
+            default: return null;
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-6xl mx-auto space-y-6">
@@ -59,27 +72,39 @@ export default function AdminPage() {
                         <nav className="flex -mb-px">
                             <button
                                 onClick={() => setActiveTab('users')}
-                                className={`py-4 px-6 font-medium text-sm border-b-2 transition-colors ${activeTab === 'users'
+                                className={`flex items-center gap-2 py-4 px-6 font-medium text-sm border-b-2 transition-colors ${activeTab === 'users'
                                     ? 'border-black text-black'
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
                             >
-                                👥 Kullanıcı Yönetimi
+                                <UserIcon size={16} />
+                                Kullanıcı Yönetimi
                             </button>
                             <button
                                 onClick={() => setActiveTab('database')}
-                                className={`py-4 px-6 font-medium text-sm border-b-2 transition-colors ${activeTab === 'database'
+                                className={`flex items-center gap-2 py-4 px-6 font-medium text-sm border-b-2 transition-colors ${activeTab === 'database'
                                     ? 'border-black text-black'
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
                             >
-                                🗄️ Veritabanı & Eğitim
+                                <DatabaseIcon size={16} />
+                                Veritabanı & Eğitim
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('scanner')}
+                                className={`flex items-center gap-2 py-4 px-6 font-medium text-sm border-b-2 transition-colors ${activeTab === 'scanner'
+                                    ? 'border-black text-black'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    }`}
+                            >
+                                <SearchIcon size={16} />
+                                Veri Tarayıcı
                             </button>
                         </nav>
                     </div>
 
                     <div className="p-6">
-                        {activeTab === 'users' ? <UserManagement /> : <DatabaseManagement />}
+                        {renderContent()}
                     </div>
                 </div>
             </div>
@@ -166,6 +191,198 @@ function UserManagement() {
     );
 }
 
+function DataScannerManagement() {
+    const [status, setStatus] = useState<{ last_run: string | null; next_run: string | null; is_running: boolean } | null>(null);
+    const [timeLeft, setTimeLeft] = useState<string>('');
+    const [loading, setLoading] = useState(false);
+    const [isScanModalOpen, setIsScanModalOpen] = useState(false);
+
+    const [prevRunning, setPrevRunning] = useState(false);
+
+    useEffect(() => {
+        fetchStatus();
+        const interval = setInterval(fetchStatus, 30000); // Sync with server every 30s
+        return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+        if (status) {
+            // Check for completion: was running, now not running
+            if (prevRunning && !status.is_running) {
+                toast.success('Veri tarama işlemi başarıyla tamamlandı!', {
+                    duration: 5000,
+                    icon: '✅',
+                    style: {
+                        background: '#10B981',
+                        color: '#fff',
+                    }
+                });
+            }
+            setPrevRunning(status.is_running);
+        }
+    }, [status]);
+
+    useEffect(() => {
+        if (!status?.next_run) return;
+
+        const timer = setInterval(() => {
+            const now = new Date();
+            const target = new Date(status.next_run!);
+            const diff = target.getTime() - now.getTime();
+
+            if (diff <= 0) {
+                setTimeLeft('Şuan çalışıyor...');
+            } else {
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                setTimeLeft(`${hours}sa ${minutes}dk ${seconds}sn`);
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [status]);
+
+    const fetchStatus = async () => {
+        try {
+            const data = await apiClient.getScannerStatus();
+            setStatus(data);
+        } catch (error) {
+            console.error('Failed to fetch scanner status:', error);
+        }
+    };
+
+    const handleScanClick = () => {
+        setIsScanModalOpen(true);
+    };
+
+    const confirmScan = async () => {
+        setIsScanModalOpen(false);
+        setLoading(true);
+        try {
+            toast.loading('Veri taraması başlatılıyor...', { id: 'scan-toast' });
+            const res = await apiClient.scanData();
+            if (res.success) {
+                toast.success('Tarama işlemi arka planda başlatıldı!', { id: 'scan-toast' });
+                // Optimistically update status to running to trigger the logic correctly if needed
+                setPrevRunning(true);
+                fetchStatus();
+            }
+        } catch (e) {
+            toast.error('İşlem başlatılamadı.', { id: 'scan-toast' });
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                <div>
+                    <div className="flex items-center gap-2 mb-2">
+                        <SearchIcon size={20} className="text-gray-700" />
+                        <h3 className="text-lg font-semibold text-black">Akıllı Veri Tarayıcı</h3>
+                        {status?.is_running && (
+                            <span className="px-2 py-0.5 text-[10px] font-bold bg-green-100 text-green-700 rounded-full animate-pulse">
+                                ÇALIŞIYOR
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-gray-600 text-sm max-w-2xl">
+                        Bu özellik, veritabanınızdaki kategorik verileri (Departman İsimleri, Ürün Kategorileri, Şehirler vb.)
+                        otomatik olarak tarar ve Yapay Zeka'ya öğretir. <br />
+                        <span className="font-medium mt-1 inline-block text-purple-700 flex items-center gap-1">
+                            <ZapIcon size={12} />
+                            Faydası: AI'nın olmayan verileri uydurmasını engeller ve filtreleme sorgularında %95+ başarı sağlar.
+                        </span>
+                    </p>
+
+                    <div className="mt-4 flex flex-wrap gap-4">
+                        <div className="bg-gray-50 px-3 py-2 rounded-md border border-gray-100">
+                            <span className="text-xs text-gray-500 block mb-1">Otomatik Tarama (Her gece 23:59)</span>
+                            <div className="text-sm font-mono font-medium text-black flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                {timeLeft || 'Hesaplanıyor...'}
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-50 px-3 py-2 rounded-md border border-gray-100">
+                            <span className="text-xs text-gray-500 block mb-1">Son Tarama</span>
+                            <div className="text-sm font-medium text-black">
+                                {status?.last_run
+                                    ? new Date(status.last_run).toLocaleString('tr-TR')
+                                    : 'Henüz taranmadı'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <Button
+                    variant="primary"
+                    className="flex items-center gap-2 whitespace-nowrap"
+                    onClick={handleScanClick}
+                    disabled={loading || status?.is_running}
+                >
+                    <RefreshCwIcon size={14} className={loading || status?.is_running ? 'animate-spin' : ''} />
+                    {loading || status?.is_running ? 'Taranıyor...' : 'Şimdi Tara'}
+                </Button>
+            </div>
+
+            <Modal
+                isOpen={isScanModalOpen}
+                onClose={() => setIsScanModalOpen(false)}
+                title=""
+                size="sm"
+            >
+                <div className="text-center space-y-6">
+                    {/* Icon */}
+                    <div className="mx-auto w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
+                        <RefreshCwIcon size={32} className="text-blue-600" />
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="text-xl font-bold text-black">
+                        Veri Taraması Başlatılsın mı?
+                    </h3>
+
+                    {/* Description */}
+                    <p className="text-gray-500 text-sm leading-relaxed">
+                        Bu işlem veritabanı boyutuna göre <strong>1-2 dakika</strong> sürebilir.
+                        İşlem arka planda çalışacağı için sayfayı kapatabilirsiniz.
+                    </p>
+
+                    {/* Warning Box */}
+                    <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
+                        <div className="flex items-center gap-2 justify-center">
+                            <ZapIcon size={16} className="text-blue-600" />
+                            <p className="text-blue-700 text-xs font-medium">
+                                AI doğruluğunu anında artırır
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            onClick={() => setIsScanModalOpen(false)}
+                            className="flex-1 px-4 py-3 rounded-xl border border-gray-300 text-gray-600 font-medium hover:bg-gray-50 transition-all duration-200"
+                        >
+                            İptal
+                        </button>
+                        <button
+                            onClick={confirmScan}
+                            className="flex-1 px-4 py-3 rounded-xl bg-black text-white font-medium hover:bg-gray-800 transition-all duration-200 shadow-md"
+                        >
+                            Taramayı Başlat
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+        </div>
+    );
+}
+
 function DatabaseManagement() {
     const [liveDDL, setLiveDDL] = useState('');
     const [trainingDDL, setTrainingDDL] = useState('');
@@ -218,13 +435,34 @@ function DatabaseManagement() {
         setLoadingTrain(true);
         try {
             console.log('Calling apiClient.trainDDL...');
-            await apiClient.trainDDL(trainingDDL);
+            const response = await apiClient.trainDDL(trainingDDL);
             console.log('trainDDL succeeded');
-            alert('Başarıyla kaydedildi ve eğitildi! Önbellek temizlendi.');
+
+            // Show toast based on response
+            if (response.success) {
+                toast.success('Eğitim işlemi arka planda başlatıldı! Tamamlandığında önbellek temizlenecek.', {
+                    duration: 5000,
+                    style: {
+                        background: '#10B981',
+                        color: '#fff',
+                    },
+                    iconTheme: {
+                        primary: '#fff',
+                        secondary: '#10B981',
+                    },
+                });
+            } else {
+                toast.success('İşlem alındı.', {
+                    duration: 4000
+                });
+            }
+
             setLastSaved(new Date().toLocaleString('tr-TR'));
         } catch (error) {
             console.error('trainDDL error:', error);
-            alert('Eğitim sırasında bir hata oluştu.');
+            toast.error('Eğitim başlatılırken bir hata oluştu.', {
+                duration: 4000
+            });
         } finally {
             setLoadingTrain(false);
         }
@@ -249,9 +487,10 @@ function DatabaseManagement() {
                             size="sm"
                             onClick={fetchLiveDDL}
                             disabled={loadingLive}
-                            className="text-xs"
+                            className="text-xs flex items-center gap-1"
                         >
-                            {loadingLive ? 'Çekiliyor...' : '🔄 Veritabanından Çek'}
+                            <RefreshCwIcon size={12} className={loadingLive ? 'animate-spin' : ''} />
+                            {loadingLive ? 'Çekiliyor...' : 'Veritabanından Çek'}
                         </Button>
                     </div>
                     <div className="flex-1 bg-white relative">
@@ -263,8 +502,6 @@ function DatabaseManagement() {
                         />
                     </div>
                 </div>
-
-                {/* Action Buttons (Middle - for mobile logic, simpler to just put copy button in header or similar) */}
 
                 {/* Right Pane: Training DDL */}
                 <div className="flex flex-col border border-gray-200 rounded-lg overflow-hidden relative">
@@ -279,23 +516,31 @@ function DatabaseManagement() {
                                 className="text-xs"
                                 title="Soldaki içeriği kopyalar"
                             >
-                                ➡️ Kopyala
+                                Kopyala
                             </Button>
                             <Button
                                 variant="primary"
                                 size="sm"
                                 onClick={handleTrainClick}
                                 disabled={loadingTrain || !trainingDDL}
-                                className="text-xs"
+                                className="text-xs flex items-center gap-1"
                             >
-                                {loadingTrain ? 'İşleniyor...' : '💾 Kaydet ve Eğit (YENİ)'}
+                                {loadingTrain ? (
+                                    <>İşleniyor...</>
+                                ) : (
+                                    <>
+                                        <SaveIcon size={12} />
+                                        Kaydet ve Eğit (YENİ)
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </div>
 
                     <div className="flex-1 bg-white relative">
-                        <div className="absolute top-0 left-0 right-0 bg-yellow-50 text-yellow-800 text-[10px] px-2 py-1 border-b border-yellow-100 text-center">
-                            ⚠️ Tablo isimlerini değiştirmeyin! Sadece açıklama (-- yorum) ekleyin.
+                        <div className="absolute top-0 left-0 right-0 bg-yellow-50 text-yellow-800 text-[10px] px-2 py-1 border-b border-yellow-100 text-center flex items-center justify-center gap-1">
+                            <AlertTriangleIcon size={10} />
+                            Tablo isimlerini değiştirmeyin! Sadece açıklama (-- yorum) ekleyin.
                         </div>
                         <textarea
                             className="w-full h-full p-4 pt-8 font-mono text-xs resize-none focus:outline-none text-black"
@@ -315,25 +560,25 @@ function DatabaseManagement() {
             >
                 <div className="text-center space-y-6">
                     {/* Icon */}
-                    <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
-                        <span className="text-3xl">🚀</span>
+                    <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                        <SaveIcon size={32} className="text-black" />
                     </div>
 
                     {/* Title */}
-                    <h3 className="text-xl font-bold text-white">
+                    <h3 className="text-xl font-bold text-black">
                         AI Modelini Eğit
                     </h3>
 
                     {/* Description */}
-                    <p className="text-gray-400 text-sm leading-relaxed">
+                    <p className="text-gray-500 text-sm leading-relaxed">
                         Bu işlem veritabanı şemasını güncelleyecek ve AI modelini yeniden eğitecektir.
                     </p>
 
                     {/* Warning Box */}
-                    <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl">
+                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl">
                         <div className="flex items-center gap-2 justify-center">
-                            <span className="text-amber-400">⚠️</span>
-                            <p className="text-amber-300 text-xs font-medium">
+                            <AlertTriangleIcon size={16} className="text-amber-600" />
+                            <p className="text-amber-700 text-xs font-medium">
                                 Bu işlem geri alınamaz
                             </p>
                         </div>
@@ -343,13 +588,13 @@ function DatabaseManagement() {
                     <div className="flex gap-3 pt-2">
                         <button
                             onClick={() => setIsConfirmModalOpen(false)}
-                            className="flex-1 px-4 py-3 rounded-xl border border-gray-600 text-gray-300 font-medium hover:bg-gray-700 hover:text-white transition-all duration-200"
+                            className="flex-1 px-4 py-3 rounded-xl border border-gray-300 text-gray-600 font-medium hover:bg-gray-50 transition-all duration-200"
                         >
                             İptal
                         </button>
                         <button
                             onClick={confirmTrain}
-                            className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg shadow-purple-500/25"
+                            className="flex-1 px-4 py-3 rounded-xl bg-black text-white font-medium hover:bg-gray-800 transition-all duration-200 shadow-md"
                         >
                             Onayla ve Eğit
                         </button>

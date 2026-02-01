@@ -19,7 +19,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 import json
 import asyncio
 from config.vanna import MyVanna, get_default_config
-from services import DatabaseService, AuthService, UserService, QueryService, ChatService
+from services import DatabaseService, AuthService, UserService, QueryService, ChatService, ScannerService
 from api import auth, queries, chat, admin
 
 
@@ -43,6 +43,53 @@ def wait_for_ollama(ollama_host=None, max_retries=30, retry_delay=2):
                 print(f"⚠️  Ollama service not ready after {max_retries} retries, continuing anyway...")
                 return False
     return False
+
+
+async def scheduled_scan_task(vn):
+    """
+    Background task that runs the data scanner exactly at 23:59 every night.
+    """
+    from datetime import datetime, timedelta
+    print("⏰ [Scheduler] Initializing 23:59 daily scheduler...")
+
+    try:
+        # Initial short delay to let server start
+        await asyncio.sleep(60) 
+
+        while True:
+            now = datetime.now()
+            # Calculate target time (Today 23:59)
+            target_time = now.replace(hour=23, minute=59, second=0, microsecond=0)
+            
+            # If 23:59 has already passed for today, schedule for tomorrow
+            if now >= target_time:
+                target_time += timedelta(days=1)
+            
+            # Update the service status so frontend knows when next run is
+            ScannerService.set_next_run(target_time.isoformat())
+            
+            wait_seconds = (target_time - now).total_seconds()
+            hours_wait = wait_seconds / 3600
+            
+            print(f"⏰ [Scheduler] Next scan scheduled for {target_time} (in {hours_wait:.2f} hours)")
+            
+            # Wait until the target time
+            await asyncio.sleep(wait_seconds)
+            
+            # Execute Scan
+            print("⏰ [Scheduler] Triggering daily data scan...")
+            try:
+                # Running in thread pool to avoiding blocking async loop
+                ScannerService.scan_and_train(vn)
+                print("⏰ [Scheduler] Daily scan finished.")
+            except Exception as e:
+                print(f"❌ [Scheduler] Scan failed: {e}")
+            
+            # Loop continues -> calculates next 23:59
+            
+    except asyncio.CancelledError:
+        print("⏰ [Scheduler] Task cancelled")
+
 
 
 def check_and_create_missing_tables(db_path):
@@ -376,6 +423,9 @@ async def startup_event():
     app.state.query_service = query_service
     app.state.chat_service = chat_service
     app.state.vanna_instance = vn
+    
+    # Start background scheduler
+    asyncio.create_task(scheduled_scan_task(vn))
     
     print("✅ FastAPI application initialized successfully", flush=True)
     print("=" * 60, flush=True)

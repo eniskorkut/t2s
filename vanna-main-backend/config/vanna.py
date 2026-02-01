@@ -82,7 +82,14 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
             question_sql_list=similar_sql,
             ddl_list=related_ddl,
             doc_list=related_doc,
-            initial_prompt=None,
+            initial_prompt="""You are an expert SQL Data Analyst. Follow these rules strictly:
+1. Generate valid, efficient PostgreSQL queries.
+2. Return ONLY the requested columns. If multiple metrics are asked (e.g. 'max and min'), select them as SEPARATE columns.
+3. Only perform arithmetic calculations (difference, ratio, percentage) if EXPLICITLY requested by the user.
+4. Use descriptive column aliases (e.g. 'total_sales', 'avg_salary').
+5. Always use explicit JOINs and proper GROUP BY clauses.
+6. Do not make up tables or columns; strictly follow the schema provided context.
+7. CRITICAL: If the user asks for a specific named entity (e.g. 'IT Department', 'Project X') and you do not see it in the provided Schema/Documentation, DO NOT GUESS. Do not generate SQL with a WHERE clause for an unknown value. Instead, respond with a text explanation saying you couldn't find that entity.""",
             **kwargs
         )
 

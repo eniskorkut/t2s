@@ -116,7 +116,7 @@ class QueryService:
             return False
     
     @staticmethod
-    def check_semantic_cache(vn, question: str, distance_threshold: float = 0.65) -> Optional[str]:
+    def check_semantic_cache(vn, question: str, distance_threshold: float = 0.35) -> Optional[str]:
         """
         Check semantic cache for similar questions.
         Uses ChromaDB vector store with proper distance threshold.
@@ -280,6 +280,32 @@ class QueryService:
                 raise ValueError(f"Güvenlik İhlali: '{keyword}' komutu bu sistemde yasaklanmıştır.")
         
         return True
+
+    @staticmethod
+    def is_likely_sql(text: str) -> bool:
+        """
+        Check if the text is likely a SQL query.
+        Used to distinguish between SQL generation and text explanations.
+        """
+        if not text:
+            return False
+            
+        # Common SQL keywords that start a query
+        sql_starters = ['SELECT', 'WITH', 'SHOW', 'DESCRIBE', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP']
+        
+        # Clean text
+        clean_text = text.strip().upper()
+        
+        # If it's a markdown code block, extract looking for sql
+        if '```' in text:
+            return True # Let the extraction logic handle it
+            
+        # Check if it starts with a keyword
+        for starter in sql_starters:
+            if clean_text.startswith(starter):
+                return True
+                
+        return False
 
     @staticmethod
     def generate_sql_explanation(question: str, sql: str) -> str:

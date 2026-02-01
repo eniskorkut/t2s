@@ -231,6 +231,14 @@ export class ApiClient implements IApiClient {
     );
     return longTimeoutClient.post<{ success: boolean; message: string }>('/api/admin/train', { ddl });
   }
+
+  async scanData(): Promise<{ success: boolean; message: string }> {
+    return this.httpClient.post<{ success: boolean; message: string }>('/api/admin/scan-data');
+  }
+
+  async getScannerStatus(): Promise<{ last_run: string | null; next_run: string | null; is_running: boolean }> {
+    return this.httpClient.get<{ last_run: string | null; next_run: string | null; is_running: boolean }>('/api/admin/scanner-status');
+  }
 }
 
 // Singleton instance for application use

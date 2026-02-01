@@ -10,7 +10,7 @@ from models.schemas import (
     DDLTrainRequest,
     SchemaDefinition
 )
-from services import UserService, DatabaseService, QueryService
+from services import UserService, DatabaseService, QueryService, ScannerService
 from api.dependencies import (
     get_user_service, 
     get_db_service, 
@@ -111,22 +111,45 @@ async def train_ddl(
         )
     except Exception as e:
         print(f"Error saving DDL: {e}")
-        # Proceed with training anyway? Or fail?
-        # Usually we want to save history.
-        pass # Log and proceed
+        # Proceed with training anyway
+        pass
     
-    # 2. Train Vanna (This can be slow, but usually DDL training is fast enough)
-    # If it's very large, background task is better.
-    try:
-        vn.train(ddl=request.ddl)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Training failed: {str(e)}")
+    # 2. Train Vanna in Background
+    # Training and cache clearing can take time, so we offload it
+    background_tasks.add_task(run_training_job, vn, request.ddl)
     
-    # 3. Clear Cache
-    # QueryService has static method clear_cache(vn)
+    return {"success": True, "message": "Training started in background"}
+
+
+@router.post("/scan-data", dependencies=[Depends(require_admin)])
+async def scan_data(
+    background_tasks: BackgroundTasks,
+    vn = Depends(get_vanna_instance),
+    current_user: dict = Depends(require_admin)
+):
+    """
+    Trigger manual data scan to index categorical values.
+    """
+    background_tasks.add_task(ScannerService.scan_and_train, vn)
+    background_tasks.add_task(ScannerService.scan_and_train, vn)
+    return {"success": True, "message": "Data scan started in background"}
+
+
+@router.get("/scanner-status", dependencies=[Depends(require_admin)])
+async def get_scanner_status():
+    """Get status of the data scanner."""
+    return ScannerService.get_status()
+
+
+def run_training_job(vn, ddl_content: str):
+    """Background task to run Vanna training."""
     try:
+        print("🚀 Starting background training job...")
+        vn.train(ddl=ddl_content)
+        print("✅ Training completed.")
+        
+        # 3. Clear Cache
         QueryService.clear_cache(vn)
+        print("🧹 Cache cleared.")
     except Exception as e:
-        print(f"Warning: Failed to clear cache: {e}")
-    
-    return {"success": True, "message": "Training completed and cache cleared"}
+        print(f"❌ Training failed: {e}")

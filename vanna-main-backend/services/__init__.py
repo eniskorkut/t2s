@@ -6,6 +6,7 @@ from .auth_service import AuthService
 from .user_service import UserService
 from .query_service import QueryService
 from .database_service import DatabaseService
+from .scanner_service import ScannerService
 from .chat_service import ChatService
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "QueryService",
     "DatabaseService",
     "ChatService",
+    "ScannerService",
 ]

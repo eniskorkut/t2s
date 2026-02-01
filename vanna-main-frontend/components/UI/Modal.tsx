@@ -49,16 +49,16 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className={`bg-[#202123] rounded-xl w-full ${sizeStyles[size]} shadow-xl`}
+        className={`bg-white rounded-xl w-full ${sizeStyles[size]} shadow-2xl ring-1 ring-black/5`}
         onClick={(e) => e.stopPropagation()}
       >
         {title && (
-          <div className="p-6 border-b border-white/10">
-            <h2 className="text-2xl font-semibold text-white">{title}</h2>
+          <div className="p-6 border-b border-gray-100">
+            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
           </div>
         )}
         <div className="p-6">{children}</div>

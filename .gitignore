@@ -47,4 +47,5 @@ pnpm-debug.log*
 # Vanna'nın oluşturduğu geçici vektör dosyaları veya cacheler
 *.chroma/
 vanna_cache/
-training_data.json
+training_data.jsonchroma_db/
+vanna-main-backend/chroma_db/
