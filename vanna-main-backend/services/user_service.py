@@ -23,7 +23,7 @@ class UserService:
                 'id': user.id,
                 'email': user.email,
                 'role': user.role,
-                'created_at': user.created_at
+                'created_at': user.created_at.isoformat() if user.created_at else None
             }
         return None
     
@@ -38,7 +38,7 @@ class UserService:
                 'id': user.id,
                 'email': user.email,
                 'role': user.role,
-                'created_at': user.created_at
+                'created_at': user.created_at.isoformat() if user.created_at else None
             }
         return None
 
@@ -52,7 +52,7 @@ class UserService:
                 'id': user.id,
                 'email': user.email,
                 'role': user.role,
-                'created_at': user.created_at
+                'created_at': user.created_at.isoformat() if user.created_at else None
             }
             for user in users
         ]

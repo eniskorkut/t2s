@@ -30,6 +30,10 @@ COPY services/ ./services/
 COPY templates/ ./templates/
 COPY api/ ./api/
 COPY models/ ./models/
+COPY prisma/ ./prisma/
+
+# Generate Prisma Client
+RUN prisma generate
 
 # Expose port
 EXPOSE 8084

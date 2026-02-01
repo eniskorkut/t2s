@@ -5,22 +5,19 @@ SOLID: Single Responsibility Principle
 from typing import List, Optional, Dict, Any
 import pandas as pd
 import json
-from .database_service import DatabaseService
+from src.db import prisma
 
 
 class QueryService:
     """Service for handling saved query operations."""
     
-    def __init__(self, db_service: DatabaseService):
+    def __init__(self):
         """
         Initialize query service.
-        
-        Args:
-            db_service: DatabaseService instance
         """
-        self.db_service = db_service
+        pass
     
-    def save_query(
+    async def save_query(
         self,
         user_id: int,
         question: str,
@@ -29,112 +26,92 @@ class QueryService:
     ) -> Optional[int]:
         """
         Save a user query.
-        
-        Args:
-            user_id: User ID
-            question: User's question
-            sql_query: Generated SQL query
-            is_trained: Whether query was used for training
-            
-        Returns:
-            Query ID if successful, None otherwise
         """
-        query = """
-            INSERT INTO user_saved_queries (user_id, question, sql_query, is_trained)
-            VALUES (?, ?, ?, ?)
-        """
-        
         try:
-            query_id = self.db_service.execute_insert(
-                query,
-                (user_id, question, sql_query, 1 if is_trained else 0)
+            saved_query = await prisma.usersavedquery.create(
+                data={
+                    'user_id': user_id,
+                    'question': question,
+                    'sql_query': sql_query,
+                    'is_trained': is_trained
+                }
             )
-            return query_id
-        except Exception:
+            return saved_query.id
+        except Exception as e:
+            print(f"Error saving query: {e}")
             return None
     
-    def get_user_queries(self, user_id: int) -> List[Dict]:
+    async def get_user_queries(self, user_id: int) -> List[Dict]:
         """
         Get all saved queries for a user.
-        
-        Args:
-            user_id: User ID
-            
-        Returns:
-            List of query dictionaries
         """
-        query = """
-            SELECT id, question, sql_query, saved_at, is_trained
-            FROM user_saved_queries
-            WHERE user_id = ?
-            ORDER BY saved_at DESC
-        """
+        queries = await prisma.usersavedquery.find_many(
+            where={'user_id': user_id},
+            order={'saved_at': 'desc'}
+        )
         
-        results = self.db_service.execute_query(query, (user_id,))
-        return results
+        return [
+            {
+                'id': q.id,
+                'question': q.question,
+                'sql_query': q.sql_query,
+                'saved_at': q.saved_at.isoformat(),
+                'is_trained': q.is_trained
+            }
+            for q in queries
+        ]
     
-    def get_query_by_id(self, query_id: int, user_id: int) -> Optional[Dict]:
+    async def get_query_by_id(self, query_id: int, user_id: int) -> Optional[Dict]:
         """
         Get a specific query by ID (ensuring it belongs to user).
-        
-        Args:
-            query_id: Query ID
-            user_id: User ID (for security)
-            
-        Returns:
-            Query dictionary or None if not found/not owned by user
         """
-        query = """
-            SELECT id, question, sql_query, saved_at, is_trained
-            FROM user_saved_queries
-            WHERE id = ? AND user_id = ?
-        """
+        query = await prisma.usersavedquery.find_first(
+            where={
+                'id': query_id,
+                'user_id': user_id
+            }
+        )
         
-        results = self.db_service.execute_query(query, (query_id, user_id))
-        
-        if results:
-            return results[0]
+        if query:
+            return {
+                'id': query.id,
+                'question': query.question,
+                'sql_query': query.sql_query,
+                'saved_at': query.saved_at.isoformat(),
+                'is_trained': query.is_trained
+            }
         return None
     
-    def delete_query(self, query_id: int, user_id: int) -> bool:
+    async def delete_query(self, query_id: int, user_id: int) -> bool:
         """
         Delete a query (ensuring it belongs to user).
-        
-        Args:
-            query_id: Query ID
-            user_id: User ID (for security)
-            
-        Returns:
-            True if deleted, False otherwise
         """
-        query = "DELETE FROM user_saved_queries WHERE id = ? AND user_id = ?"
-        
         try:
-            rows_affected = self.db_service.execute_update(query, (query_id, user_id))
-            return rows_affected > 0
+            count = await prisma.usersavedquery.delete_many(
+                where={
+                    'id': query_id,
+                    'user_id': user_id
+                }
+            )
+            return count > 0
         except Exception:
             return False
     
-    def mark_as_trained(self, query_id: int, user_id: int) -> bool:
+    async def mark_as_trained(self, query_id: int, user_id: int) -> bool:
         """
         Mark a query as trained.
-        
-        Args:
-            query_id: Query ID
-            user_id: User ID (for security)
-            
-        Returns:
-            True if updated, False otherwise
         """
-        query = """
-            UPDATE user_saved_queries
-            SET is_trained = 1
-            WHERE id = ? AND user_id = ?
-        """
-        
         try:
-            rows_affected = self.db_service.execute_update(query, (query_id, user_id))
-            return rows_affected > 0
+            count = await prisma.usersavedquery.update_many(
+                where={
+                    'id': query_id,
+                    'user_id': user_id
+                },
+                data={
+                    'is_trained': True
+                }
+            )
+            return count > 0
         except Exception:
             return False
     

@@ -2,35 +2,58 @@
 
 import { useState } from "react";
 import { apiClient } from "@/lib/api/HttpClient";
-import { useAuth } from "@/context/AuthContext";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-export default function LoginPage() {
+export default function RegisterPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
+    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
         setLoading(true);
 
+        if (password.length < 6) {
+            setError("Parola en az 6 karakter olmalıdır.");
+            setLoading(false);
+            return;
+        }
+
         try {
-            const res = await apiClient.post<any>("/api/login", {
+            const res = await apiClient.post<any>("/api/register", {
                 email,
                 password,
             });
 
-            // Backend returns: { access_token, token_type, role }
-            if (res.access_token) {
-                login(res.access_token, res.role, email);
+            if (res.success) {
+                // Auto-login attempt
+                try {
+                    const loginRes = await apiClient.post<any>("/api/login", {
+                        email,
+                        password,
+                    });
+                    if (loginRes.token) {
+                        localStorage.setItem('token', loginRes.token);
+                        localStorage.setItem('role', loginRes.role);
+                        localStorage.setItem('email', email);
+                        // Redirect to home or dashboard
+                        window.location.href = '/';
+                        return;
+                    }
+                } catch (loginErr) {
+                    // If auto-login fails, redirect to login page
+                    router.push("/login");
+                }
             } else {
-                throw new Error("Giriş başarısız.");
+                throw new Error(res.error || "Kayıt başarısız.");
             }
 
         } catch (err: any) {
-            setError(err.message || "Giriş başarısız.");
+            setError(err.message || "Kayıt işlemi başarısız.");
         } finally {
             setLoading(false);
         }
@@ -41,10 +64,10 @@ export default function LoginPage() {
             <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg border border-gray-100">
                 <div>
                     <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 tracking-tight">
-                        Hesabınıza Giriş Yapın
+                        Yeni Hesap Oluşturun
                     </h2>
                     <p className="mt-2 text-center text-sm text-gray-600">
-                        Devam etmek için kimlik bilgilerinizi doğrulayın
+                        Vanna AI ile SQL sorguları oluşturmaya başlayın
                     </p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -73,24 +96,14 @@ export default function LoginPage() {
                                 id="password"
                                 name="password"
                                 type="password"
-                                autoComplete="current-password"
+                                autoComplete="new-password"
                                 required
+                                minLength={6}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
-                                placeholder="Şifre"
+                                placeholder="Şifre (En az 6 karakter)"
                             />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                                {/* Remember me checkbox removed as per snippet context, keeping minimal change */}
-                            </div>
-
-                            <div className="text-sm">
-                                <a href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
-                                    Şifremi unuttum?
-                                </a>
-                            </div>
                         </div>
                     </div>
 
@@ -113,32 +126,17 @@ export default function LoginPage() {
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                             ) : (
-                                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                                    <svg
-                                        className="h-5 w-5 text-blue-500 group-hover:text-blue-400"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 20 20"
-                                        fill="currentColor"
-                                        aria-hidden="true"
-                                    >
-                                        <path
-                                            fillRule="evenodd"
-                                            d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                                            clipRule="evenodd"
-                                        />
-                                    </svg>
-                                </span>
+                                "Kayıt Ol"
                             )}
-                            {loading ? "Giriş Yapılıyor..." : "Giriş Yap"}
                         </button>
                     </div>
 
                     <div className="flex items-center justify-center mt-4">
                         <div className="text-sm">
-                            <span className="text-gray-600">Hesabınız yok mu? </span>
-                            <a href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-                                Şimdi Kayıt Olun
-                            </a>
+                            <span className="text-gray-600">Zaten hesabınız var mı? </span>
+                            <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+                                Giriş Yap
+                            </Link>
                         </div>
                     </div>
                 </form>

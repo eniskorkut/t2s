@@ -16,6 +16,11 @@ model User {
   password_hash String
   role          String   @default("user")
   created_at    DateTime @default(now())
+  
+  // Relations
+  sessions          ChatSession[]
+  schema_definitions SchemaDefinition[]
+  saved_queries     UserSavedQuery[]
 
   @@map("users")
 }
@@ -28,6 +33,56 @@ model PasswordResetToken {
   created_at DateTime @default(now())
 
   @@map("password_reset_tokens")
+}
+
+// App Domain Models
+model ChatSession {
+  id         String   @id @default(uuid())
+  title      String
+  user_id    Int
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  is_pinned  Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+  messages   ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id          Int         @id @default(autoincrement())
+  session_id  String
+  session     ChatSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  role        String
+  content     String
+  sql_query   String?
+  data        String?
+  plotly_json String?
+  created_at  DateTime    @default(now())
+
+  @@map("chat_messages")
+}
+
+model SchemaDefinition {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  ddl_content String
+  created_at  DateTime @default(now())
+
+  @@map("schema_definitions")
+}
+
+model UserSavedQuery {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  question   String
+  sql_query  String
+  saved_at   DateTime @default(now())
+  is_trained Boolean  @default(false)
+
+  @@map("user_saved_queries")
 }
 
 // Business Domain Models

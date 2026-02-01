@@ -79,10 +79,14 @@ export class HttpClient implements IHttpClient {
       }
 
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new NetworkError('Request timeout');
+        throw new NetworkError('İstek zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edin.');
       }
 
-      throw new NetworkError(error instanceof Error ? error.message : 'Network error occurred');
+      throw new NetworkError(
+        error instanceof Error
+          ? (error.message === 'Failed to fetch' ? 'Sunucuya bağlanılamadı. Backend çalışıyor mu?' : error.message)
+          : 'Bir ağ hatası oluştu'
+      );
     }
   }
 
@@ -119,5 +123,5 @@ export class HttpClient implements IHttpClient {
   }
 }
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8084';
 export const apiClient = new HttpClient(apiUrl);

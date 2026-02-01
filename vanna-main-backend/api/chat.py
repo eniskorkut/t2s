@@ -66,7 +66,7 @@ async def create_new_session(
     title = chat_service.generate_session_title(vn, first_message)
     
     # Session oluştur
-    session_id = chat_service.create_session(user_id, title)
+    session_id = await chat_service.create_session(user_id, title)
     
     if not session_id:
         raise HTTPException(
@@ -88,7 +88,7 @@ async def get_chat_history(
 ):
     """Kullanıcının tüm sohbet geçmişini getirir."""
     user_id = current_user['id']
-    sessions = chat_service.get_user_sessions(user_id)
+    sessions = await chat_service.get_user_sessions(user_id)
     
     return {
         "success": True,
@@ -106,14 +106,14 @@ async def get_session_messages(
     user_id = current_user['id']
     
     # Session'ın var olduğunu ve kullanıcıya ait olduğunu kontrol et
-    session = chat_service.get_session_by_id(session_id, user_id)
+    session = await chat_service.get_session_by_id(session_id, user_id)
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found"
         )
     
-    messages = chat_service.get_session_messages(session_id, user_id)
+    messages = await chat_service.get_session_messages(session_id, user_id)
     
     return {
         "success": True,
@@ -132,7 +132,7 @@ async def update_session_title(
     """Sohbet başlığını günceller."""
     user_id = current_user['id']
     
-    success = chat_service.update_session_title(
+    success = await chat_service.update_session_title(
         session_id,
         request_data.title,
         user_id
@@ -159,7 +159,7 @@ async def toggle_pin_session(
     """Session'ın pin durumunu değiştirir (toggle)."""
     user_id = current_user['id']
     
-    success = chat_service.toggle_pin_session(session_id, user_id)
+    success = await chat_service.toggle_pin_session(session_id, user_id)
     
     if not success:
         raise HTTPException(
@@ -182,7 +182,7 @@ async def delete_session(
     """Sohbet oturumunu siler."""
     user_id = current_user['id']
     
-    success = chat_service.delete_session(session_id, user_id)
+    success = await chat_service.delete_session(session_id, user_id)
     
     if not success:
         raise HTTPException(
@@ -216,14 +216,14 @@ async def send_message(
     start_time = time.monotonic()
     # Verify session ownership
     print(f"DEBUG: Checking session {session_id} for user {user_id}")
-    session = chat_service.get_session_by_id(session_id, user_id)
+    session = await chat_service.get_session_by_id(session_id, user_id)
     if not session:
         print(f"DEBUG: Session {session_id} not found for user {user_id}")
         raise HTTPException(status_code=404, detail="Session not found")
     print(f"DEBUG: Session found: {session}")
 
     # 1. Save User Message
-    chat_service.add_message(session_id, 'user', question)
+    await chat_service.add_message(session_id, 'user', question)
 
     if stream:
         async def message_generator():
@@ -237,7 +237,7 @@ async def send_message(
                     full_sql = cached_sql.strip()
                     sql_explanation = QueryService.generate_sql_explanation(question, full_sql)
                     full_content = f"{sql_explanation}\n\n```sql\n{full_sql}\n```" if sql_explanation else f"```sql\n{full_sql}\n```"
-                    chat_service.add_message(
+                    await chat_service.add_message(
                         session_id=session_id,
                         role='assistant',
                         content=full_content,
@@ -251,7 +251,7 @@ async def send_message(
                         plotly_json = None
                         if QueryService.should_generate_chart(df, full_sql):
                             plotly_json = QueryService.generate_plotly_chart(df, full_sql)
-                        chat_service.add_message(
+                        await chat_service.add_message(
                             session_id=session_id,
                             role='assistant',
                             content="Sorgu sonuçları:",
@@ -262,7 +262,7 @@ async def send_message(
                         yield f"data: {json.dumps({'type': 'result', 'data': data, 'plotly_json': plotly_json, 'from_cache': True})}\n\n"
                     except Exception as e:
                         friendly_error = QueryService.generate_friendly_error(vn, question, full_sql, str(e))
-                        chat_service.add_message(session_id, 'assistant', friendly_error)
+                        await chat_service.add_message(session_id, 'assistant', friendly_error)
                         yield f"data: {json.dumps({'type': 'error', 'error': friendly_error, 'from_cache': True})}\n\n"
                     yield "data: [DONE]\n\n"
                     return
@@ -328,7 +328,7 @@ async def send_message(
                 full_content = f"{sql_explanation}\n\n```sql\n{full_sql}\n```" if sql_explanation else f"```sql\n{full_sql}\n```"
                 
                 # Save SQL message
-                chat_service.add_message(
+                await chat_service.add_message(
                     session_id=session_id,
                     role='assistant',
                     content=full_content,
@@ -346,7 +346,7 @@ async def send_message(
                         plotly_json = QueryService.generate_plotly_chart(df, full_sql)
                     
                     # Save results message
-                    chat_service.add_message(
+                    await chat_service.add_message(
                         session_id=session_id,
                         role='assistant',
                         content="Sorgu sonuçları:",
@@ -358,7 +358,7 @@ async def send_message(
                     yield f"data: {json.dumps({'type': 'result', 'data': data, 'plotly_json': plotly_json})}\n\n"
                 except Exception as e:
                     friendly_error = QueryService.generate_friendly_error(vn, process_question, full_sql, str(e))
-                    chat_service.add_message(session_id, 'assistant', friendly_error)
+                    await chat_service.add_message(session_id, 'assistant', friendly_error)
                     yield f"data: {json.dumps({'type': 'error', 'error': friendly_error})}\n\n"
 
             except Exception as e:
@@ -377,7 +377,7 @@ async def send_message(
             full_sql = vn.generate_sql(question=question)
             sql_explanation = QueryService.generate_sql_explanation(question, full_sql)
             full_content = f"{sql_explanation}\n\n```sql\n{full_sql}\n```" if sql_explanation else f"```sql\n{full_sql}\n```"
-            chat_service.add_message(
+            await chat_service.add_message(
                 session_id=session_id,
                 role='assistant',
                 content=full_content,
@@ -386,7 +386,7 @@ async def send_message(
             df = vn.run_sql(sql=full_sql)
             data = df.head(10).to_dict(orient="records")
             plotly_json = QueryService.generate_plotly_chart(df, full_sql) if QueryService.should_generate_chart(df, full_sql) else None
-            chat_service.add_message(
+            await chat_service.add_message(
                 session_id=session_id,
                 role='assistant',
                 content="Sorgu sonuçları:",

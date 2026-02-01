@@ -63,7 +63,7 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister, onSwitchToRese
 
   return (
     <div
-      className={`fixed inset-0 z-50 ${asModal ? 'bg-black/50' : 'bg-white'} flex items-center justify-center`}
+      className={`fixed inset-0 z-50 ${asModal ? 'bg-black/50' : 'bg-white'} flex items-center justify-center overflow-y-auto py-10`}
       onClick={asModal ? onClose : undefined}
     >
       <div
@@ -200,9 +200,9 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister, onSwitchToRese
                 onClose();
                 onSwitchToRegister();
               }}
-              className="text-sm text-gray-600 hover:text-black underline"
+              className="text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline"
             >
-              Hesabın yok mu? Kayıt ol
+              Hesabın yok mu? Hemen ücretsiz kaydol
             </button>
           </div>
         </div>

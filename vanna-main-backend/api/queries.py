@@ -22,7 +22,7 @@ async def save_query(
 ):
     """Save a query."""
     user_id = current_user['id']
-    query_id = query_service.save_query(
+    query_id = await query_service.save_query(
         user_id,
         query_data.question,
         query_data.sql_query,
@@ -52,7 +52,7 @@ async def get_my_queries(
 ):
     """Get user's saved queries."""
     user_id = current_user['id']
-    queries = query_service.get_user_queries(user_id)
+    queries = await query_service.get_user_queries(user_id)
     
     # Convert to response models
     query_responses = [
@@ -77,7 +77,7 @@ async def delete_query(
 ):
     """Delete a query."""
     user_id = current_user['id']
-    success = query_service.delete_query(query_id, user_id)
+    success = await query_service.delete_query(query_id, user_id)
     
     if not success:
         raise HTTPException(
@@ -158,7 +158,7 @@ async def run_sql(
         # Save results to chat history if session exists
         if session_id:
             try:
-                chat_service.add_message(
+                await chat_service.add_message(
                     session_id=session_id,
                     role='assistant',
                     content="Sorgu sonuçları:",

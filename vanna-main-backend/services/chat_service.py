@@ -3,34 +3,21 @@ Chat Service - Single Responsibility: Chat session and message operations.
 SOLID: Single Responsibility Principle
 """
 from typing import List, Optional, Dict, Any
-import uuid
 import json
 from datetime import datetime
-from .database_service import DatabaseService
-
+from src.db import prisma
 
 class ChatService:
-    """Service for handling chat session operations."""
+    """Service for handling chat session operations using Prisma."""
     
-    def __init__(self, db_service: DatabaseService):
-        """
-        Initialize chat service.
-        
-        Args:
-            db_service: DatabaseService instance
-        """
-        self.db_service = db_service
+    def __init__(self):
+        """Initialize chat service."""
+        pass
     
     def generate_session_title(self, vn, first_message: str) -> str:
         """
         LLM kullanarak sohbet için otomatik başlık oluşturur.
-        
-        Args:
-            vn: Vanna instance (LLM için)
-            first_message: Kullanıcının ilk sorusu
-            
-        Returns:
-            Oluşturulan başlık (3-5 kelime)
+        (Synchronous method as it uses Vanna/LLM which might be sync)
         """
         try:
             prompt_text = (
@@ -54,104 +41,88 @@ class ChatService:
                     title = title[:47] + "..."
                 return title
             
-            # Fallback: İlk birkaç kelime
+            # Fallback
             words = first_message.split()[:4]
             return " ".join(words) + ("..." if len(first_message.split()) > 4 else "")
             
         except Exception as e:
             print(f"Warning: Failed to generate auto title: {e}")
-            # Fallback başlık
             words = first_message.split()[:4]
             return " ".join(words) + ("..." if len(first_message.split()) > 4 else "")
     
-    def create_session(self, user_id: int, title: str) -> Optional[str]:
-        """
-        Yeni bir chat session oluşturur.
-        
-        Args:
-            user_id: Kullanıcı ID
-            title: Sohbet başlığı
-            
-        Returns:
-            Session ID (UUID) veya None
-        """
+    async def create_session(self, user_id: int, title: str) -> Optional[str]:
+        """Yeni bir chat session oluşturur."""
         try:
-            session_id = str(uuid.uuid4())
-            print(f"DEBUG: Creating session {session_id} for user {user_id}")
-            query = """
-                INSERT INTO chat_sessions (id, user_id, title, created_at, updated_at)
-                VALUES (?, ?, ?, datetime('now'), datetime('now'))
-            """
-            self.db_service.execute_update(query, (session_id, user_id, title))
-            return session_id
+            session = await prisma.chatsession.create(
+                data={
+                    'title': title,
+                    'user_id': user_id,
+                    'is_pinned': False
+                }
+            )
+            return session.id
         except Exception as e:
             print(f"Error creating session: {e}")
             return None
     
-    def update_session_title(self, session_id: str, new_title: str, user_id: int) -> bool:
-        """
-        Sohbet başlığını günceller (güvenlik için user_id kontrolü).
-        
-        Args:
-            session_id: Session ID
-            new_title: Yeni başlık
-            user_id: Kullanıcı ID (güvenlik)
-            
-        Returns:
-            True başarılı, False başarısız
-        """
+    async def update_session_title(self, session_id: str, new_title: str, user_id: int) -> bool:
+        """Sohbet başlığını günceller."""
         try:
-            query = """
-                UPDATE chat_sessions 
-                SET title = ?, updated_at = datetime('now')
-                WHERE id = ? AND user_id = ?
-            """
-            rows = self.db_service.execute_update(query, (new_title, session_id, user_id))
-            return rows > 0
+            session = await prisma.chatsession.update_many(
+                where={
+                    'id': session_id,
+                    'user_id': user_id
+                },
+                data={
+                    'title': new_title
+                }
+            )
+            return session > 0 # count
         except Exception:
             return False
     
-    def get_user_sessions(self, user_id: int, limit: int = 50) -> List[Dict]:
-        """
-        Kullanıcının tüm sohbetlerini getirir (tarihe göre sıralı).
+    async def get_user_sessions(self, user_id: int, limit: int = 50) -> List[Dict]:
+        """Kullanıcının tüm sohbetlerini getirir."""
+        sessions = await prisma.chatsession.find_many(
+            where={'user_id': user_id},
+            order=[
+                {'is_pinned': 'desc'},
+                {'updated_at': 'desc'}
+            ],
+            take=limit
+        )
         
-        Args:
-            user_id: Kullanıcı ID
-            limit: Maksimum kayıt sayısı
-            
-        Returns:
-            Session listesi
-        """
-        query = """
-            SELECT id, title, is_pinned, created_at, updated_at
-            FROM chat_sessions
-            WHERE user_id = ?
-            ORDER BY is_pinned DESC, updated_at DESC
-            LIMIT ?
-        """
-        results = self.db_service.execute_query(query, (user_id, limit))
-        return results
+        return [
+            {
+                'id': s.id,
+                'title': s.title,
+                'is_pinned': s.is_pinned,
+                'created_at': s.created_at.isoformat(),
+                'updated_at': s.updated_at.isoformat()
+            }
+            for s in sessions
+        ]
     
-    def get_session_by_id(self, session_id: str, user_id: int) -> Optional[Dict]:
-        """
-        Belirli bir session bilgisini getirir (güvenlik kontrolü ile).
+    async def get_session_by_id(self, session_id: str, user_id: int) -> Optional[Dict]:
+        """Belirli bir session bilgisini getirir."""
+        session = await prisma.chatsession.find_first(
+            where={
+                'id': session_id,
+                'user_id': user_id
+            }
+        )
         
-        Args:
-            session_id: Session ID
-            user_id: Kullanıcı ID
-            
-        Returns:
-            Session dict veya None
-        """
-        query = """
-            SELECT id, title, is_pinned, created_at, updated_at
-            FROM chat_sessions
-            WHERE id = ? AND user_id = ?
-        """
-        results = self.db_service.execute_query(query, (session_id, user_id))
-        return results[0] if results else None
+        if session:
+            return {
+                'id': session.id,
+                'title': session.title,
+                'is_pinned': session.is_pinned,
+                'created_at': session.created_at.isoformat(),
+                'updated_at': session.updated_at.isoformat()
+            }
+        return None
     
-    def add_message(
+    async def add_message(
         self,
         session_id: str,
         role: str,
@@ -160,165 +131,123 @@ class ChatService:
         data: Optional[List[Dict]] = None,
         plotly_json: Optional[Dict] = None
     ) -> Optional[Dict]:
-        """
-        Sohbete yeni mesaj ekler.
-        
-        Args:
-            session_id: Session ID
-            role: 'user' veya 'assistant'
-            content: Mesaj içeriği
-            sql_query: SQL sorgusu (varsa)
-            data: Tablo verisi (varsa)
-            plotly_json: Grafik verisi (varsa)
-            
-        Returns:
-            Eklenen mesaj (dict) veya None
-        """
+        """Sohbete yeni mesaj ekler."""
         try:
-            # Ensure session_id is a string
-            session_id = str(session_id)
-            
-            # JSON serialize et
+            # JSON serialize
             data_json = json.dumps(data) if data else None
             plotly_json_str = json.dumps(plotly_json) if plotly_json else None
             
-            query = """
-                INSERT INTO chat_messages 
-                (session_id, role, content, sql_query, data, plotly_json, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-            """
-            
-            message_id = self.db_service.execute_insert(
-                query,
-                (session_id, role, content, sql_query, data_json, plotly_json_str)
+            message = await prisma.chatmessage.create(
+                data={
+                    'session_id': session_id,
+                    'role': role,
+                    'content': content,
+                    'sql_query': sql_query,
+                    'data': data_json,
+                    'plotly_json': plotly_json_str
+                }
             )
             
-            if not message_id:
-                print(f"Warning: execute_insert returned None for session {session_id}")
-                return None
+            # Update session timestamp
+            await self._update_session_timestamp(session_id)
             
-            # Session'ın updated_at'ini güncelle
-            self._update_session_timestamp(session_id)
-            
-            # Eklenen mesajı geri döndür (frontend için)
             return {
-                "id": str(message_id),
+                "id": str(message.id),
                 "role": role,
                 "content": content,
                 "sql": sql_query,
                 "data": data,
                 "plotly_json": plotly_json,
-                "created_at": datetime.now().isoformat()
+                "created_at": message.created_at.isoformat()
             }
         except Exception as e:
-            print(f"Error adding message to session {session_id}: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"Error adding message: {e}")
             return None
-    
-    def get_session_messages(
+
+    async def get_session_messages(
         self,
         session_id: str,
         user_id: int,
         limit: int = 100
     ) -> List[Dict]:
-        """
-        Belirli bir session'ın tüm mesajlarını getirir.
-        
-        Args:
-            session_id: Session ID
-            user_id: Kullanıcı ID (güvenlik)
-            limit: Maksimum mesaj sayısı
-            
-        Returns:
-            Mesaj listesi
-        """
-        # Önce session'ın kullanıcıya ait olduğunu kontrol et
-        session = self.get_session_by_id(session_id, user_id)
+        """Belirli bir session'ın mesajlarını getirir."""
+        # Check ownership first
+        session = await self.get_session_by_id(session_id, user_id)
         if not session:
             return []
-        
-        query = """
-            SELECT id, role, content, sql_query as sql, data, plotly_json, created_at
-            FROM chat_messages
-            WHERE session_id = ?
-            ORDER BY created_at ASC
-            LIMIT ?
-        """
-        
-        results = self.db_service.execute_query(query, (session_id, limit))
-        
-        # JSON parse et
-        for msg in results:
-            if msg.get('data'):
-                try:
-                    msg['data'] = json.loads(msg['data'])
-                except:
-                    msg['data'] = None
             
-            if msg.get('plotly_json'):
-                try:
-                    msg['plotly_json'] = json.loads(msg['plotly_json'])
-                except:
-                    msg['plotly_json'] = None
+        messages = await prisma.chatmessage.find_many(
+            where={'session_id': session_id},
+            order={'created_at': 'asc'},
+            take=limit
+        )
         
-        return results
+        result = []
+        for msg in messages:
+            msg_data = None
+            msg_plotly = None
+            
+            if msg.data:
+                try:
+                    msg_data = json.loads(msg.data)
+                except: pass
+            
+            if msg.plotly_json:
+                try:
+                    msg_plotly = json.loads(msg.plotly_json)
+                except: pass
+                
+            result.append({
+                'id': msg.id,
+                'role': msg.role,
+                'content': msg.content,
+                'sql': msg.sql_query,
+                'data': msg_data,
+                'plotly_json': msg_plotly,
+                'created_at': msg.created_at.isoformat()
+            })
+            
+        return result
     
-    def delete_session(self, session_id: str, user_id: int) -> bool:
-        """
-        Session'ı siler (cascade delete ile mesajlar da silinir).
-        
-        Args:
-            session_id: Session ID
-            user_id: Kullanıcı ID (güvenlik)
-            
-        Returns:
-            True başarılı, False başarısız
-        """
+    async def delete_session(self, session_id: str, user_id: int) -> bool:
+        """Session siler."""
         try:
-            query = "DELETE FROM chat_sessions WHERE id = ? AND user_id = ?"
-            rows = self.db_service.execute_update(query, (session_id, user_id))
-            return rows > 0
+            # First check ownership (Prisma deleteMany returns count)
+            count = await prisma.chatsession.delete_many(
+                where={
+                    'id': session_id,
+                    'user_id': user_id
+                }
+            )
+            return count > 0
         except Exception:
             return False
-    
-    def toggle_pin_session(self, session_id: str, user_id: int) -> bool:
-        """
-        Session'ın pin durumunu değiştirir (toggle).
-        
-        Args:
-            session_id: Session ID
-            user_id: Kullanıcı ID (güvenlik)
             
-        Returns:
-            True başarılı, False başarısız
-        """
+    async def toggle_pin_session(self, session_id: str, user_id: int) -> bool:
+        """Pin durumunu değiştirir."""
         try:
-            # Önce mevcut pin durumunu al
-            check_query = "SELECT is_pinned FROM chat_sessions WHERE id = ? AND user_id = ?"
-            result = self.db_service.execute_query(check_query, (session_id, user_id))
-            
-            if not result:
+            session = await prisma.chatsession.find_first(
+                where={'id': session_id, 'user_id': user_id}
+            )
+            if not session:
                 return False
+                
+            new_pin = not session.is_pinned
             
-            current_pin = result[0].get('is_pinned', 0)
-            new_pin = 1 if current_pin == 0 else 0
-            
-            # Pin durumunu güncelle
-            query = """
-                UPDATE chat_sessions 
-                SET is_pinned = ?, updated_at = datetime('now')
-                WHERE id = ? AND user_id = ?
-            """
-            rows = self.db_service.execute_update(query, (new_pin, session_id, user_id))
-            return rows > 0
+            await prisma.chatsession.update(
+                where={'id': session_id},
+                data={'is_pinned': new_pin}
+            )
+            return True
         except Exception:
             return False
-    
-    def _update_session_timestamp(self, session_id: str):
-        """Session'ın updated_at timestamp'ini günceller (private helper)."""
+
+    async def _update_session_timestamp(self, session_id: str):
+        """Update session timestamp."""
         try:
-            query = "UPDATE chat_sessions SET updated_at = datetime('now') WHERE id = ?"
-            self.db_service.execute_update(query, (session_id,))
-        except:
-            pass
+            await prisma.chatsession.update(
+                where={'id': session_id},
+                data={'updated_at': datetime.now()}
+            )
+        except: pass
+

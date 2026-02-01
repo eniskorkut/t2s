@@ -2,6 +2,8 @@
 Vanna AI Configuration Module
 Contains the MyVanna class that combines ChromaDB and Ollama for RAG-based Text-to-SQL.
 """
+
+import os
 from vanna.legacy.ollama import Ollama
 from vanna.legacy.chromadb import ChromaDB_VectorStore
 from chromadb.utils import embedding_functions

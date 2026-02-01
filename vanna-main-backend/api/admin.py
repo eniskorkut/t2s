@@ -27,7 +27,7 @@ async def get_users(
     user_service: UserService = Depends(get_user_service)
 ):
     """List all users."""
-    users = user_service.get_all_users()
+    users = await user_service.get_all_users()
     return users
 
 
@@ -46,7 +46,7 @@ async def update_user_role(
         # Optional: check if there are other admins
         pass
 
-    success = user_service.update_user_role(user_id, request.role)
+    success = await user_service.update_user_role(user_id, request.role)
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -63,22 +63,18 @@ async def get_live_ddl(
     return {"ddl": ddl}
 
 
+from src.db import prisma
+
 @router.get("/ddl/saved", response_model=SchemaDefinition, dependencies=[Depends(require_admin)])
 async def get_saved_ddl(
-    db_service: DatabaseService = Depends(get_db_service)
+    user_service: UserService = Depends(get_user_service)
 ):
     """Get the last saved DDL definition."""
-    query = """
-        SELECT id, user_id, ddl_content, created_at 
-        FROM schema_definitions 
-        ORDER BY created_at DESC 
-        LIMIT 1
-    """
-    results = db_service.execute_query(query)
+    result = await prisma.schemadefinition.find_first(
+        order={'created_at': 'desc'}
+    )
     
-    if not results:
-        # If no saved DDL, return current live DDL as default or 404
-        # Better to return empty or construct one
+    if not result:
         return {
             "id": 0,
             "user_id": 0,
@@ -86,7 +82,12 @@ async def get_saved_ddl(
             "created_at": ""
         }
         
-    return results[0]
+    return {
+        "id": result.id,
+        "user_id": result.user_id,
+        "ddl_content": result.ddl_content,
+        "created_at": result.created_at.isoformat()
+    }
 
 
 @router.post("/train", dependencies=[Depends(require_admin)])
@@ -100,12 +101,19 @@ async def train_ddl(
 ):
     """Save DDL and train Vanna."""
     
-    # 1. Save DDL to DB
-    insert_query = """
-        INSERT INTO schema_definitions (user_id, ddl_content)
-        VALUES (?, ?)
-    """
-    db_service.execute_insert(insert_query, (current_user['id'], request.ddl))
+    # 1. Save DDL to DB (Prisma)
+    try:
+        await prisma.schemadefinition.create(
+            data={
+                'user_id': current_user['id'],
+                'ddl_content': request.ddl
+            }
+        )
+    except Exception as e:
+        print(f"Error saving DDL: {e}")
+        # Proceed with training anyway? Or fail?
+        # Usually we want to save history.
+        pass # Log and proceed
     
     # 2. Train Vanna (This can be slow, but usually DDL training is fast enough)
     # If it's very large, background task is better.

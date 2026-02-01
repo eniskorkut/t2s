@@ -366,8 +366,8 @@ async def startup_event():
     db_service = DatabaseService(db_path)
     auth_service = AuthService() # Now uses Prisma
     user_service = UserService() # Now uses Prisma
-    query_service = QueryService(db_service)
-    chat_service = ChatService(db_service)
+    query_service = QueryService() # Now uses Prisma
+    chat_service = ChatService() # Now uses Prisma
     
     # Store services in app state for dependency injection
     app.state.db_service = db_service
@@ -469,7 +469,7 @@ async def generate_sql(request_data: GenerateSqlRequest, request: Request, strea
 
         # Save user message to history if session exists
         if session_id:
-            chat_service.add_message(
+            await chat_service.add_message(
                 session_id=session_id,
                 role='user',
                 content=question
@@ -515,7 +515,7 @@ async def generate_sql(request_data: GenerateSqlRequest, request: Request, strea
             # Save to chat history if session exists
             if session_id:
                 full_content = f"{explanation}\n\n```sql\n{sql}\n```" if explanation else f"```sql\n{sql}\n```"
-                chat_service.add_message(
+                await chat_service.add_message(
                     session_id=session_id,
                     role='assistant',
                     content=full_content,
@@ -550,7 +550,7 @@ async def generate_sql(request_data: GenerateSqlRequest, request: Request, strea
                 # Save to chat history if session exists
                 if session_id:
                     full_content = f"{explanation}\n\n```sql\n{full_sql}\n```" if explanation else f"```sql\n{full_sql}\n```"
-                    chat_service.add_message(
+                    await chat_service.add_message(
                         session_id=session_id,
                         role='assistant',
                         content=full_content,
@@ -587,7 +587,7 @@ async def generate_sql(request_data: GenerateSqlRequest, request: Request, strea
         # Save to chat history if session exists
         if session_id:
             full_content = f"{explanation}\n\n```sql\n{sql}\n```" if explanation else f"```sql\n{sql}\n```"
-            chat_service.add_message(
+            await chat_service.add_message(
                 session_id=session_id,
                 role='assistant',
                 content=full_content,
