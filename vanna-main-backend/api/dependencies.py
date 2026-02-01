@@ -80,7 +80,8 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    user = user_service.get_user_by_id(int(user_id))
+    # Updated to await the async method
+    user = await user_service.get_user_by_id(int(user_id))
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -90,7 +90,7 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
             if not hasattr(self, 'ollama_client'):
                 # Initialize if needed (e.g. if it was initialized without pull)
                 config = {
-                    "ollama_host": self.host if hasattr(self, 'host') else "http://ollama:11434",
+                    "ollama_host": self.host,
                     "model": self.model if hasattr(self, 'model') else "qwen2.5-coder:3b",
                     "ollama_timeout": self.ollama_timeout if hasattr(self, 'ollama_timeout') else 600.0
                 }
@@ -115,7 +115,7 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
         import ollama
         from httpx import Timeout
         
-        self.host = config.get("ollama_host", "http://ollama:11434")
+        self.host = config.get("ollama_host", os.getenv("OLLAMA_HOST", "http://ollama:11434"))
         self.model = config["model"]
         if ":" not in self.model:
             self.model += ":latest"
@@ -137,7 +137,7 @@ class MyVanna(ChromaDB_VectorStore, Ollama):
 def get_default_config():
     """Returns default configuration for Vanna AI."""
     return {
-        "ollama_host": "http://ollama:11434",
+        "ollama_host": os.getenv("OLLAMA_HOST", "http://ollama:11434"),
         "model": "qwen2.5-coder:3b",
         "path": "./chroma_db"
     }

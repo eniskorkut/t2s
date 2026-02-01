@@ -18,14 +18,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 import json
 import asyncio
-from vanna_config import MyVanna, get_default_config
+from config.vanna import MyVanna, get_default_config
 from services import DatabaseService, AuthService, UserService, QueryService, ChatService
 from api import auth, queries, chat, admin
 
 
-def wait_for_ollama(ollama_host="http://ollama:11434", max_retries=30, retry_delay=2):
+def wait_for_ollama(ollama_host=None, max_retries=30, retry_delay=2):
     """Wait for Ollama service to be ready."""
-    print(f"⏳ Waiting for Ollama service at {ollama_host}...")
+    if ollama_host is None:
+        ollama_host = os.getenv("OLLAMA_HOST", "http://ollama:11434")
+    
+    print(f"⏳ Waiting for Ollama service at {ollama_host}...", flush=True)
     for i in range(max_retries):
         try:
             response = requests.get(f"{ollama_host}/api/tags", timeout=5)
@@ -272,7 +275,7 @@ def initialize_database_if_needed(db_path):
         print("=" * 60)
         try:
             result = subprocess.run(
-                [sys.executable, "/app/init_db.py"],
+                [sys.executable, "/app/scripts/init_db.py"],
                 check=True,
                 capture_output=True,
                 text=True
@@ -349,10 +352,20 @@ async def startup_event():
         sys.stdout.flush()
         raise
     
+    # Initialize Prisma (Postgres)
+    from src.db import connect_db, disconnect_db
+    try:
+        await connect_db()
+        print("✅ Connected to Postgres database (Prisma)", flush=True)
+    except Exception as e:
+        print(f"❌ Error connecting to Postgres: {e}", flush=True)
+        sys.stdout.flush()
+        raise
+
     # Initialize services (Dependency Injection - SOLID)
     db_service = DatabaseService(db_path)
-    auth_service = AuthService(db_service)
-    user_service = UserService(db_service)
+    auth_service = AuthService() # Now uses Prisma
+    user_service = UserService() # Now uses Prisma
     query_service = QueryService(db_service)
     chat_service = ChatService(db_service)
     
@@ -370,6 +383,13 @@ async def startup_event():
     print("📖 API docs available at http://localhost:8084/docs", flush=True)
     print("=" * 60, flush=True)
     sys.stdout.flush()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown."""
+    from src.db import disconnect_db
+    await disconnect_db()
+    print("🛑 Disconnected from Postgres database", flush=True)
 
 # Include routers
 app.include_router(auth.router, prefix="/api", tags=["auth"])

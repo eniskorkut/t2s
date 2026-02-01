@@ -11,4 +11,5 @@ bcrypt>=4.0.0
 passlib[bcrypt]>=1.7.4
 plotly>=5.18.0
 pandas>=2.0.0
+prisma
 sentence-transformers>=2.2.2

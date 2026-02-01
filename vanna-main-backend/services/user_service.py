@@ -1,64 +1,69 @@
 """
-User Service - Single Responsibility: User data operations.
+User Service - Single Responsibility: User management.
 SOLID: Single Responsibility Principle
 """
 from typing import Optional, Dict
-from .database_service import DatabaseService
-
+from src.db import prisma
 
 class UserService:
-    """Service for handling user data operations."""
+    """Service for handling user operations using Prisma."""
     
-    def __init__(self, db_service: DatabaseService):
-        """
-        Initialize user service.
-        
-        Args:
-            db_service: DatabaseService instance
-        """
-        self.db_service = db_service
+    def __init__(self):
+        """Initialize user service."""
+        pass
     
-    def get_user_by_id(self, user_id: int) -> Optional[Dict]:
-        """
-        Get user by ID.
+    async def get_user_by_id(self, user_id: int) -> Optional[Dict]:
+        """Get user by ID."""
+        user = await prisma.user.find_unique(
+            where={'id': user_id}
+        )
         
-        Args:
-            user_id: User ID
-            
-        Returns:
-            User dictionary or None if not found
-        """
-        query = "SELECT id, email, created_at, role FROM users WHERE id = ?"
-        results = self.db_service.execute_query(query, (user_id,))
-        
-        if results:
-            return results[0]
+        if user:
+            return {
+                'id': user.id,
+                'email': user.email,
+                'role': user.role,
+                'created_at': user.created_at
+            }
         return None
     
-    def get_user_by_email(self, email: str) -> Optional[Dict]:
-        """
-        Get user by email.
+    async def get_user_by_email(self, email: str) -> Optional[Dict]:
+        """Get user by email."""
+        user = await prisma.user.find_unique(
+            where={'email': email}
+        )
         
-        Args:
-            email: User email
-            
-        Returns:
-            User dictionary or None if not found
-        """
-        query = "SELECT id, email, created_at, role FROM users WHERE email = ?"
-        results = self.db_service.execute_query(query, (email,))
-        
-        if results:
-            return results[0]
+        if user:
+            return {
+                'id': user.id,
+                'email': user.email,
+                'role': user.role,
+                'created_at': user.created_at
+            }
         return None
 
-    def get_all_users(self) -> list:
+    async def get_all_users(self) -> list:
         """Get all users."""
-        query = "SELECT id, email, created_at, role FROM users ORDER BY created_at DESC"
-        return self.db_service.execute_query(query)
+        users = await prisma.user.find_many(
+            order={'created_at': 'desc'}
+        )
+        return [
+            {
+                'id': user.id,
+                'email': user.email,
+                'role': user.role,
+                'created_at': user.created_at
+            }
+            for user in users
+        ]
 
-    def update_user_role(self, user_id: int, role: str) -> bool:
+    async def update_user_role(self, user_id: int, role: str) -> bool:
         """Update a user's role."""
-        query = "UPDATE users SET role = ? WHERE id = ?"
-        row_count = self.db_service.execute_update(query, (role, user_id))
-        return row_count > 0
+        try:
+            await prisma.user.update(
+                where={'id': user_id},
+                data={'role': role}
+            )
+            return True
+        except Exception:
+            return False

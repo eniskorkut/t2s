@@ -21,7 +21,7 @@ async def login(
     Login endpoint.
     Returns JWT access token.
     """
-    user = auth_service.authenticate(login_data.email, login_data.password)
+    user = await auth_service.authenticate(login_data.email, login_data.password)
     
     if not user:
         raise HTTPException(
@@ -54,7 +54,7 @@ async def register(
             detail="Password must be at least 6 characters"
         )
     
-    user_id = auth_service.create_user(register_data.email, register_data.password)
+    user_id = await auth_service.create_user(register_data.email, register_data.password)
     
     if not user_id:
         raise HTTPException(
@@ -149,7 +149,7 @@ async def reset_password(
             detail="Invalid or expired reset token"
         )
         
-    success = auth_service.reset_password(request.email, request.new_password)
+    success = await auth_service.reset_password(request.email, request.new_password)
     
     if not success:
         raise HTTPException(
